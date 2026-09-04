@@ -15,33 +15,21 @@ import {
 export type ActiveTab = 
   | 'dashboard' 
   | 'forensics' 
-  | 'intel' 
-  | 'email' 
-  | 'ambient' 
-  | 'training' 
-  | 'inspector' 
-  | 'adversarial';
+  | 'intel';
 
 interface HeaderProps {
   activeTab: ActiveTab;
   setActiveTab: (tab: ActiveTab) => void;
-  ambientProtectionEnabled: boolean;
-  setAmbientProtectionEnabled: (enabled: boolean) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   activeTab,
   setActiveTab
 }) => {
-  const tabs: { id: ActiveTab; label: string; icon: React.ReactNode; badge?: string }[] = [
-    { id: 'dashboard', label: '3D Globe Dashboard', icon: <Globe className="w-4 h-4" /> },
+  const tabs: { id: ActiveTab; label: string; icon: React.ReactNode }[] = [
+    { id: 'dashboard', label: 'Dashboard', icon: <Globe className="w-4 h-4" /> },
     { id: 'forensics', label: 'Forensics', icon: <Microscope className="w-4 h-4" /> },
-    { id: 'intel', label: 'Threat Intel', icon: <Database className="w-4 h-4" /> },
-    { id: 'email', label: 'Encrypted Mail Shield', icon: <Mail className="w-4 h-4" />, badge: '200+ Vectors' },
-    { id: 'ambient', label: 'Ambient Browser', icon: <Compass className="w-4 h-4" />, badge: '0.1ms' },
-    { id: 'training', label: 'AI Training Matrix', icon: <Cpu className="w-4 h-4" /> },
-    { id: 'inspector', label: 'Diagnostic Inspector', icon: <Search className="w-4 h-4" /> },
-    { id: 'adversarial', label: 'Adversarial Lab', icon: <TerminalSquare className="w-4 h-4" /> }
+    { id: 'intel', label: 'Threat Intelligence', icon: <Database className="w-4 h-4" /> }
   ];
 
   return (
@@ -86,13 +74,6 @@ export const Header: React.FC<HeaderProps> = ({
                 >
                   {tab.icon}
                   <span>{tab.label}</span>
-                  {tab.badge && (
-                    <span className={`text-[9px] px-1.5 py-0.2 rounded font-mono font-bold ${
-                      isActive ? 'bg-indigo-500 text-white' : 'bg-indigo-100 text-indigo-700'
-                    }`}>
-                      {tab.badge}
-                    </span>
-                  )}
                 </button>
               );
             })}
