@@ -35,11 +35,30 @@ export const ForensicsView: React.FC = () => {
   const allEmails = [...customEmails, ...SAMPLE_EMAILS];
   const isThreat = selectedEmail.isThreat;
 
-  const parseRawEmail = (rawText: string, fileName: string = 'custom_uploaded.eml') => {
+  const parseRawEmail = async (rawText: string, fileName: string = 'custom_uploaded.eml') => {
+    // Try backend API first
+    try {
+      const res = await fetch('/api/analyze-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rawEmail: rawText, fileName })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.email) {
+          setCustomEmails(prev => [data.email, ...prev]);
+          setSelectedEmail(data.email);
+          return;
+        }
+      }
+    } catch (_) {
+      // Backend offline: run client-side engine below
+    }
+
     const lines = rawText.split(/\r?\n/);
     const headers: Record<string, string> = {};
     let isHeader = true;
-    let bodyLines: string[] = [];
+    const bodyLines: string[] = [];
     let currentHeaderKey = '';
 
     for (let i = 0; i < lines.length; i++) {
@@ -204,7 +223,7 @@ export const ForensicsView: React.FC = () => {
       ]
     };
 
-    setCustomEmails([parsedEmail, ...customEmails]);
+    setCustomEmails(prev => [parsedEmail, ...prev]);
     setSelectedEmail(parsedEmail);
   };
 
