@@ -147,7 +147,7 @@ export const App: React.FC = () => {
         {/* VIEW 6: AI Training Matrix */}
         {activeTab === 'training' && (
           <AITrainingStudio 
-            onMetricsUpdated={(m) => setMetrics(m)}
+            onMetricsUpdated={(m: ModelMetrics) => setMetrics(m)}
           />
         )}
 

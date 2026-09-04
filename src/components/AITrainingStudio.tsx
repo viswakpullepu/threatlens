@@ -225,7 +225,7 @@ export const AITrainingStudio: React.FC<AITrainingStudioProps> = ({ onMetricsUpd
                 rows={3}
                 value={customPayload}
                 onChange={(e) => setCustomPayload(e.target.value)}
-                placeholder="e.g. <?php system($_GET['cmd']); ?> or custom prompt jailbreak..."
+                placeholder="e.g. system command injection or custom prompt jailbreak..."
                 className="w-full p-3 font-mono text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white text-slate-900"
               />
             </div>

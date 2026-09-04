@@ -253,7 +253,7 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
       globeGroup.add(arc);
     });
 
-    // 9. Interaction listeners
+    // 9. Interaction listeners (Mouse & Touch)
     const onMouseDown = (e: MouseEvent) => {
       isDragging.current = true;
       previousMousePosition.current = { x: e.clientX, y: e.clientY };
@@ -273,9 +273,33 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
       isDragging.current = false;
     };
 
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        isDragging.current = true;
+        previousMousePosition.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!isDragging.current || e.touches.length !== 1) return;
+      const deltaX = e.touches[0].clientX - previousMousePosition.current.x;
+      const deltaY = e.touches[0].clientY - previousMousePosition.current.y;
+      targetRotation.current.y += deltaX * 0.006;
+      targetRotation.current.x += deltaY * 0.006;
+      targetRotation.current.x = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, targetRotation.current.x));
+      previousMousePosition.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    };
+
+    const onTouchEnd = () => {
+      isDragging.current = false;
+    };
+
     container.addEventListener('mousedown', onMouseDown);
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
+    container.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchmove', onTouchMove, { passive: true });
+    window.addEventListener('touchend', onTouchEnd);
 
     // Animation Loop
     const animate = () => {
@@ -319,6 +343,9 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
       container.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
+      container.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
       window.removeEventListener('resize', handleResize);
     };
   }, []);
