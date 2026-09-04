@@ -110,23 +110,6 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
       </header>
-
-      {/* Guided Status Banner */}
-      <div className="bg-indigo-600 text-white text-xs py-2 px-4 shadow-inner">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="bg-white text-indigo-900 font-extrabold px-2 py-0.5 rounded text-[10px] uppercase tracking-wider">
-              AI Platform
-            </span>
-            <span className="truncate">
-              ThreatLens AI combines neural email NLP, real-time geolocation telemetry, and automated forensic intelligence.
-            </span>
-          </div>
-          <span className="hidden md:inline font-mono opacity-80 text-[11px] shrink-0">
-            AI Model: ThreatLens-v4.2 • Geolocation Online
-          </span>
-        </div>
-      </div>
     </>
   );
 };
