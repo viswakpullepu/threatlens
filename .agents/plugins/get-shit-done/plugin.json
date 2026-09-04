@@ -1,0 +1,8 @@
+{
+  "name": "get-shit-done",
+  "version": "1.50.0-canary.0",
+  "description": "A meta-prompting, context engineering and spec-driven development system for disciplined planning, execution, and shipping workflows.",
+  "author": "TÂCHES",
+  "homepage": "https://github.com/gsd-build/get-shit-done",
+  "license": "MIT"
+}
