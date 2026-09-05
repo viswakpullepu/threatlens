@@ -1,5 +1,114 @@
 [
   {
+    "id": "eml-mtnw2sx9",
+    "title": "Dear Students,",
+    "shortBadge": "🚨 Threat Intercepted",
+    "userFriendlyCategory": "Credential Harvesting Phish",
+    "threatScore": 55,
+    "severity": "medium",
+    "severityLabel": "High Threat",
+    "isThreat": true,
+    "simpleTakeaway": "Threat identified: \"Dear Students,\". SPF Authentication Failed (IP not authorized in DNS). DKIM Cryptographic Signature Missing or Tampered.",
+    "whatHappened": [
+      "Sender: inbound-delivery@external-gateway.net (External Sender)",
+      "Live DNS checks: SPF=FAIL, DKIM=FAIL, DMARC=FAIL",
+      "Extracted 0 link(s) and 0 attachment(s)."
+    ],
+    "whatToDo": "Quarantine email immediately. Block sender IP and domain. Do not click links or execute attachments.",
+    "sender": {
+      "displayName": "External Sender",
+      "email": "inbound-delivery@external-gateway.net",
+      "envelopeFrom": "inbound-delivery@external-gateway.net",
+      "replyTo": "inbound-delivery@external-gateway.net",
+      "originIp": "185.220.101.5",
+      "asn": "AS202425 (Internet Route)",
+      "location": "Frankfurt, Germany",
+      "reverseDns": "berlin01.tor-exit.artikel10.org",
+      "isSpoofed": false,
+      "spoofType": "None Detected (Sender Identity Aligned)"
+    },
+    "recipient": {
+      "email": "security-team@enterprise-corp.com",
+      "department": "Enterprise Security Posture",
+      "targetHost": "mx1.enterprise.local"
+    },
+    "metadata": {
+      "subject": "Dear Students,",
+      "date": "Sat, 05 Sep 2026 04:34:53 GMT",
+      "messageId": "<threatlens-1788582893098@mta>",
+      "userAgent": "Standard Enterprise Mailer",
+      "contentType": "text/html; charset=UTF-8"
+    },
+    "auth": {
+      "spf": {
+        "status": "FAIL",
+        "exists": false,
+        "friendlyName": "SPF (Sender Identity Check)",
+        "explanation": "Queries authoritative DNS TXT records to verify if the sending IP is authorized.",
+        "message": "Domain has no valid SPF record published in DNS"
+      },
+      "dkim": {
+        "status": "FAIL",
+        "exists": false,
+        "friendlyName": "DKIM (Cryptographic Anti-Tamper Seal)",
+        "explanation": "Validates public key cryptographic signature against sender domain DNS.",
+        "message": "DKIM signature missing or failed cryptographic validation"
+      },
+      "dmarc": {
+        "status": "FAIL",
+        "exists": false,
+        "friendlyName": "DMARC (Domain Rule Alignment)",
+        "explanation": "Enforces domain policy for SPF/DKIM alignment and recipient protection.",
+        "message": "No DMARC policy record found at _dmarc.external-gateway.net"
+      }
+    },
+    "urls": [],
+    "attachments": [],
+    "hashes": {
+      "sha256": "180c9d76c9047e3531f07c0ed86c3101b4afca966556c8de22b944dab4e7dde5",
+      "md5": "ff8c7c6ad3d95e453d9c4af54e99da05"
+    },
+    "threatVerdict": {
+      "headline": "Malicious Vector Intercepted by ThreatLens AI",
+      "confidence": 99.1,
+      "analysis": [
+        "Sender identity \"inbound-delivery@external-gateway.net\" cross-referenced with live DNS records.",
+        "Cryptographic posture: SPF FAIL | DKIM FAIL | DMARC FAIL.",
+        "Extracted 0 web links and 0 attachments scanned."
+      ],
+      "recommendation": "Quarantine message and isolate headers."
+    },
+    "timeline": [
+      {
+        "time": "T+0ms",
+        "event": "Inbound connection parsed from 185.220.101.5",
+        "status": "info"
+      },
+      {
+        "time": "T+5ms",
+        "event": "Authoritative DNS resolution (SPF/DMARC): FAIL/FAIL",
+        "status": "danger"
+      },
+      {
+        "time": "T+12ms",
+        "event": "Heuristic 200+ threat matrix score: 55/100",
+        "status": "danger"
+      }
+    ],
+    "mitreAttack": [
+      {
+        "id": "T1566.002",
+        "name": "Spearphishing Link",
+        "tactic": "Initial Access"
+      },
+      {
+        "id": "T1036.005",
+        "name": "Masquerading",
+        "tactic": "Defense Evasion"
+      }
+    ]
+  },
+  {
     "id": "eml-mtnvrnw4",
     "title": "Viswak Pullepu shared a folder with you",
     "shortBadge": "✅ Verified Clean",
