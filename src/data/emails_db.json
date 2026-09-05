@@ -1,5 +1,679 @@
 [
   {
+    "id": "eml-mtnx13wc",
+    "title": "Urgent: Verify Direct Deposit Enrollment",
+    "shortBadge": "⚠️ Mild Threat",
+    "userFriendlyCategory": "Credential Harvesting Phish",
+    "threatScore": 55,
+    "severity": "medium",
+    "severityLabel": "Mild Threat (Orange)",
+    "isThreat": true,
+    "simpleTakeaway": "Mild Threat (Orange): \"Urgent: Verify Direct Deposit Enrollment\". SPF Authentication Failed (IP not authorized in DNS). DMARC Alignment Policy Violated.",
+    "whatHappened": [
+      "Sender: newsletter@unverified-news-sender.xyz (Acme HR Newsletter)",
+      "Live DNS checks: SPF=FAIL, DKIM=PASS, DMARC=FAIL",
+      "Extracted 0 link(s) and 0 attachment(s)."
+    ],
+    "whatToDo": "Quarantine email immediately. Block sender IP and domain. Do not click links or execute attachments.",
+    "sender": {
+      "displayName": "Acme HR Newsletter",
+      "email": "newsletter@unverified-news-sender.xyz",
+      "envelopeFrom": "newsletter@unverified-news-sender.xyz",
+      "replyTo": "newsletter@unverified-news-sender.xyz",
+      "originIp": "185.190.140.12",
+      "asn": "AS51167 Contabo GmbH",
+      "location": "Lauterbourg, France",
+      "lat": 48.9742,
+      "lng": 8.1851,
+      "reverseDns": "vmi880177.contaboserver.net",
+      "isSpoofed": false,
+      "spoofType": "None Detected (Sender Identity Aligned)"
+    },
+    "recipient": {
+      "email": "target@mycompany.com",
+      "department": "Enterprise Security Posture",
+      "targetHost": "mx1.enterprise.local"
+    },
+    "metadata": {
+      "subject": "Urgent: Verify Direct Deposit Enrollment",
+      "date": "Sat, 05 Sep 2026 05:01:34 GMT",
+      "messageId": "<threatlens-1788584494956@mta>",
+      "userAgent": "Standard Enterprise Mailer",
+      "contentType": "text/html; charset=UTF-8"
+    },
+    "auth": {
+      "spf": {
+        "status": "FAIL",
+        "exists": false,
+        "friendlyName": "SPF (Sender Identity Check)",
+        "explanation": "Queries authoritative DNS TXT records to verify if the sending IP is authorized.",
+        "message": "Domain has no valid SPF record published in DNS"
+      },
+      "dkim": {
+        "status": "PASS",
+        "exists": true,
+        "friendlyName": "DKIM (Cryptographic Anti-Tamper Seal)",
+        "explanation": "Validates public key cryptographic signature against sender domain DNS.",
+        "message": "DKIM cryptographic signature verified for unverified-news-sender.xyz"
+      },
+      "dmarc": {
+        "status": "FAIL",
+        "exists": false,
+        "friendlyName": "DMARC (Domain Rule Alignment)",
+        "explanation": "Enforces domain policy for SPF/DKIM alignment and recipient protection.",
+        "message": "No DMARC policy record found at _dmarc.unverified-news-sender.xyz"
+      }
+    },
+    "urls": [],
+    "attachments": [],
+    "hashes": {
+      "sha256": "cbce6e75dc39ef05a42543b8fbfaa075558b991e558ddc17ec218f8766a62a59",
+      "md5": "8e3dffecf46290eed279f0a11b51a271"
+    },
+    "threatVerdict": {
+      "headline": "Malicious Vector Intercepted by ThreatLens AI",
+      "confidence": 99.1,
+      "analysis": [
+        "Sender identity \"newsletter@unverified-news-sender.xyz\" cross-referenced with live DNS records.",
+        "Cryptographic posture: SPF FAIL | DKIM PASS | DMARC FAIL.",
+        "Extracted 0 web links and 0 attachments scanned."
+      ],
+      "recommendation": "Quarantine message and isolate headers."
+    },
+    "timeline": [
+      {
+        "time": "T+0ms",
+        "event": "Inbound connection parsed from 185.190.140.12",
+        "status": "info"
+      },
+      {
+        "time": "T+5ms",
+        "event": "Authoritative DNS resolution (SPF/DMARC): FAIL/FAIL",
+        "status": "danger"
+      },
+      {
+        "time": "T+12ms",
+        "event": "Heuristic 200+ threat matrix score: 55/100",
+        "status": "danger"
+      }
+    ],
+    "mitreAttack": [
+      {
+        "id": "T1566.002",
+        "name": "Spearphishing Link",
+        "tactic": "Initial Access"
+      },
+      {
+        "id": "T1036.005",
+        "name": "Masquerading",
+        "tactic": "Defense Evasion"
+      }
+    ]
+  },
+  {
+    "id": "eml-mtnx0fq9",
+    "title": "Direct Deposit & Payroll Update Requested",
+    "shortBadge": "✅ 100% Safe",
+    "userFriendlyCategory": "Clean Authentic Electronic Mail",
+    "threatScore": 25,
+    "severity": "safe",
+    "severityLabel": "100% Safe & Verified (Green)",
+    "isThreat": false,
+    "simpleTakeaway": "Email is authentic and safe (<50 score) from verified domain \"marketing-agency-promo.biz\". Live DNS authentication passed.",
+    "whatHappened": [
+      "Sender: contact@marketing-agency-promo.biz (Unknown External Contact)",
+      "Live DNS checks: SPF=PASS, DKIM=PASS, DMARC=PASS",
+      "Extracted 0 link(s) and 0 attachment(s)."
+    ],
+    "whatToDo": "Safe to read and deliver to user inbox.",
+    "sender": {
+      "displayName": "Unknown External Contact",
+      "email": "contact@marketing-agency-promo.biz",
+      "envelopeFrom": "contact@marketing-agency-promo.biz",
+      "replyTo": "contact@marketing-agency-promo.biz",
+      "originIp": "104.21.50.10",
+      "asn": "AS13335 Cloudflare, Inc.",
+      "location": "Toronto, Canada",
+      "lat": 43.6532,
+      "lng": -79.3832,
+      "reverseDns": "104.21.50.10.in-addr.arpa",
+      "isSpoofed": false,
+      "spoofType": "None Detected (Sender Identity Aligned)"
+    },
+    "recipient": {
+      "email": "target@mycompany.com",
+      "department": "Enterprise Security Posture",
+      "targetHost": "mx1.enterprise.local"
+    },
+    "metadata": {
+      "subject": "Direct Deposit & Payroll Update Requested",
+      "date": "Sat, 05 Sep 2026 05:01:04 GMT",
+      "messageId": "<threatlens-1788584464541@mta>",
+      "userAgent": "Standard Enterprise Mailer",
+      "contentType": "text/html; charset=UTF-8"
+    },
+    "auth": {
+      "spf": {
+        "status": "PASS",
+        "exists": true,
+        "friendlyName": "SPF (Sender Identity Check)",
+        "explanation": "Queries authoritative DNS TXT records to verify if the sending IP is authorized.",
+        "message": "Authenticated via SPF check for marketing-agency-promo.biz"
+      },
+      "dkim": {
+        "status": "PASS",
+        "exists": true,
+        "friendlyName": "DKIM (Cryptographic Anti-Tamper Seal)",
+        "explanation": "Validates public key cryptographic signature against sender domain DNS.",
+        "message": "DKIM cryptographic signature verified for marketing-agency-promo.biz"
+      },
+      "dmarc": {
+        "status": "PASS",
+        "exists": true,
+        "friendlyName": "DMARC (Domain Rule Alignment)",
+        "explanation": "Enforces domain policy for SPF/DKIM alignment and recipient protection.",
+        "message": "DMARC alignment verified for marketing-agency-promo.biz"
+      }
+    },
+    "urls": [],
+    "attachments": [],
+    "hashes": {
+      "sha256": "719992ca836d00cafbab5370117da4c738e558bc63b0a0f730e50fbfdb2277b7",
+      "md5": "a5eaf7c6138e49a2f64d02d4fe44e37b"
+    },
+    "threatVerdict": {
+      "headline": "Authentic Electronic Message",
+      "confidence": 98.6,
+      "analysis": [
+        "Sender identity \"contact@marketing-agency-promo.biz\" cross-referenced with live DNS records.",
+        "Cryptographic posture: SPF PASS | DKIM PASS | DMARC PASS.",
+        "Extracted 0 web links and 0 attachments scanned."
+      ],
+      "recommendation": "Deliver to user inbox."
+    },
+    "timeline": [
+      {
+        "time": "T+0ms",
+        "event": "Inbound connection parsed from 104.21.50.10",
+        "status": "info"
+      },
+      {
+        "time": "T+5ms",
+        "event": "Authoritative DNS resolution (SPF/DMARC): PASS/PASS",
+        "status": "success"
+      },
+      {
+        "time": "T+12ms",
+        "event": "Heuristic 200+ threat matrix score: 25/100",
+        "status": "success"
+      }
+    ],
+    "mitreAttack": []
+  },
+  {
+    "id": "eml-mtnwzis0",
+    "title": "URGENT: Confidential Acquisition Wire & Password Expiry",
+    "shortBadge": "🚨 Critical Threat",
+    "userFriendlyCategory": "Brand Impersonation / BEC",
+    "threatScore": 99,
+    "severity": "critical",
+    "severityLabel": "Critical Threat (Red)",
+    "isThreat": true,
+    "simpleTakeaway": "Critical Threat (Red): \"URGENT: Confidential Acquisition Wire & Password Expiry\". Typosquatting Masquerade: Imitating Microsoft 365 (micros0ft-login-verify.com ≠ microsoft.com). SPF Authentication Failed (IP not authorized in DNS).",
+    "whatHappened": [
+      "Sender: security-alert@micros0ft-login-verify.com (Microsoft Security Team)",
+      "Live DNS checks: SPF=FAIL, DKIM=FAIL, DMARC=FAIL",
+      "Extracted 1 link(s) and 0 attachment(s)."
+    ],
+    "whatToDo": "Quarantine email immediately. Block sender IP and domain. Do not click links or execute attachments.",
+    "sender": {
+      "displayName": "Microsoft Security Team",
+      "email": "security-alert@micros0ft-login-verify.com",
+      "envelopeFrom": "security-alert@micros0ft-login-verify.com",
+      "replyTo": "security-alert@micros0ft-login-verify.com",
+      "originIp": "185.220.101.5",
+      "asn": "AS60729 Stiftung Erneuerbare Freiheit",
+      "location": "Brandenburg an der Havel, Germany",
+      "lat": 52.6171,
+      "lng": 13.1207,
+      "reverseDns": "berlin01.tor-exit.artikel10.org",
+      "isSpoofed": true,
+      "spoofType": "Typosquatting Masquerade: Imitating Microsoft 365 (micros0ft-login-verify.com ≠ microsoft.com)"
+    },
+    "recipient": {
+      "email": "victim@mycompany.com",
+      "department": "Enterprise Security Posture",
+      "targetHost": "mx1.enterprise.local"
+    },
+    "metadata": {
+      "subject": "URGENT: Confidential Acquisition Wire & Password Expiry",
+      "date": "Sat, 05 Sep 2026 05:00:19 GMT",
+      "messageId": "<threatlens-1788584419933@mta>",
+      "userAgent": "Standard Enterprise Mailer",
+      "contentType": "text/html; charset=UTF-8"
+    },
+    "auth": {
+      "spf": {
+        "status": "FAIL",
+        "exists": false,
+        "friendlyName": "SPF (Sender Identity Check)",
+        "explanation": "Queries authoritative DNS TXT records to verify if the sending IP is authorized.",
+        "message": "Domain has no valid SPF record published in DNS"
+      },
+      "dkim": {
+        "status": "FAIL",
+        "exists": false,
+        "friendlyName": "DKIM (Cryptographic Anti-Tamper Seal)",
+        "explanation": "Validates public key cryptographic signature against sender domain DNS.",
+        "message": "DKIM signature missing or failed cryptographic validation"
+      },
+      "dmarc": {
+        "status": "FAIL",
+        "exists": false,
+        "friendlyName": "DMARC (Domain Rule Alignment)",
+        "explanation": "Enforces domain policy for SPF/DKIM alignment and recipient protection.",
+        "message": "No DMARC policy record found at _dmarc.micros0ft-login-verify.com"
+      }
+    },
+    "urls": [
+      {
+        "url": "http://185.220.101.5/harvest.php",
+        "domain": "185.220.101.5",
+        "risk": "Critical",
+        "vtScore": "28/89 Malicious (Phishing URL)",
+        "ip": "185.220.101.5",
+        "domainAge": "3 days old (Burner Domain)",
+        "isPunycode": false
+      }
+    ],
+    "attachments": [],
+    "hashes": {
+      "sha256": "f2143ddba0b41b99d1aad618be1d8cae2d114b80be64246c3d923c94d915cefd",
+      "md5": "e3bc4f6edde873ce665ca63aeb76ea8e"
+    },
+    "threatVerdict": {
+      "headline": "Malicious Vector Intercepted by ThreatLens AI",
+      "confidence": 99.1,
+      "analysis": [
+        "Sender identity \"security-alert@micros0ft-login-verify.com\" cross-referenced with live DNS records.",
+        "Cryptographic posture: SPF FAIL | DKIM FAIL | DMARC FAIL.",
+        "Extracted 1 web links and 0 attachments scanned."
+      ],
+      "recommendation": "Quarantine message and isolate headers."
+    },
+    "timeline": [
+      {
+        "time": "T+0ms",
+        "event": "Inbound connection parsed from 185.220.101.5",
+        "status": "info"
+      },
+      {
+        "time": "T+5ms",
+        "event": "Authoritative DNS resolution (SPF/DMARC): FAIL/FAIL",
+        "status": "danger"
+      },
+      {
+        "time": "T+12ms",
+        "event": "Heuristic 200+ threat matrix score: 99/100",
+        "status": "danger"
+      }
+    ],
+    "mitreAttack": [
+      {
+        "id": "T1566.002",
+        "name": "Spearphishing Link",
+        "tactic": "Initial Access"
+      },
+      {
+        "id": "T1036.005",
+        "name": "Masquerading",
+        "tactic": "Defense Evasion"
+      }
+    ]
+  },
+  {
+    "id": "eml-mtnwzexl",
+    "title": "Unusual Sign-in Detected",
+    "shortBadge": "🚨 Critical Threat",
+    "userFriendlyCategory": "Brand Impersonation / BEC",
+    "threatScore": 99,
+    "severity": "critical",
+    "severityLabel": "Critical Threat (Red)",
+    "isThreat": true,
+    "simpleTakeaway": "Critical Threat (Red): \"Unusual Sign-in Detected\". Typosquatting Masquerade: Imitating PayPal Security (paypai-security-check.com ≠ paypal.com). SPF Authentication Failed (IP not authorized in DNS).",
+    "whatHappened": [
+      "Sender: support@paypai-security-check.com (PayPal Account Notice)",
+      "Live DNS checks: SPF=FAIL, DKIM=FAIL, DMARC=FAIL",
+      "Extracted 1 link(s) and 0 attachment(s)."
+    ],
+    "whatToDo": "Quarantine email immediately. Block sender IP and domain. Do not click links or execute attachments.",
+    "sender": {
+      "displayName": "PayPal Account Notice",
+      "email": "support@paypai-security-check.com",
+      "envelopeFrom": "support@paypai-security-check.com",
+      "replyTo": "support@paypai-security-check.com",
+      "originIp": "45.154.255.89",
+      "asn": "AS41281 KeFF Networks Ltd",
+      "location": "Stockholm, Sweden",
+      "lat": 59.3287,
+      "lng": 18.0717,
+      "reverseDns": "unused.keff.org",
+      "isSpoofed": true,
+      "spoofType": "Typosquatting Masquerade: Imitating PayPal Security (paypai-security-check.com ≠ paypal.com)"
+    },
+    "recipient": {
+      "email": "target@mycompany.com",
+      "department": "Enterprise Security Posture",
+      "targetHost": "mx1.enterprise.local"
+    },
+    "metadata": {
+      "subject": "Unusual Sign-in Detected",
+      "date": "Sat, 05 Sep 2026 05:00:15 GMT",
+      "messageId": "<threatlens-1788584415127@mta>",
+      "userAgent": "Standard Enterprise Mailer",
+      "contentType": "text/html; charset=UTF-8"
+    },
+    "auth": {
+      "spf": {
+        "status": "FAIL",
+        "exists": false,
+        "friendlyName": "SPF (Sender Identity Check)",
+        "explanation": "Queries authoritative DNS TXT records to verify if the sending IP is authorized.",
+        "message": "Domain has no valid SPF record published in DNS"
+      },
+      "dkim": {
+        "status": "FAIL",
+        "exists": false,
+        "friendlyName": "DKIM (Cryptographic Anti-Tamper Seal)",
+        "explanation": "Validates public key cryptographic signature against sender domain DNS.",
+        "message": "DKIM signature missing or failed cryptographic validation"
+      },
+      "dmarc": {
+        "status": "FAIL",
+        "exists": false,
+        "friendlyName": "DMARC (Domain Rule Alignment)",
+        "explanation": "Enforces domain policy for SPF/DKIM alignment and recipient protection.",
+        "message": "No DMARC policy record found at _dmarc.paypai-security-check.com"
+      }
+    },
+    "urls": [
+      {
+        "url": "https://paypaI-security-check.com/login",
+        "domain": "paypai-security-check.com",
+        "risk": "Critical",
+        "vtScore": "14/89 Malicious (NXDOMAIN Phish)",
+        "ip": "Unresolved (Domain NXDOMAIN or Invalid)",
+        "domainAge": "3 days old (Burner Domain)",
+        "isPunycode": false
+      }
+    ],
+    "attachments": [],
+    "hashes": {
+      "sha256": "21176f5ce57f2b605307dc0aee58469e50130c0710686bd9d7d2a15096c9cb6b",
+      "md5": "fdd85686e1974cbd4f3221a6d8268458"
+    },
+    "threatVerdict": {
+      "headline": "Malicious Vector Intercepted by ThreatLens AI",
+      "confidence": 99.1,
+      "analysis": [
+        "Sender identity \"support@paypai-security-check.com\" cross-referenced with live DNS records.",
+        "Cryptographic posture: SPF FAIL | DKIM FAIL | DMARC FAIL.",
+        "Extracted 1 web links and 0 attachments scanned."
+      ],
+      "recommendation": "Quarantine message and isolate headers."
+    },
+    "timeline": [
+      {
+        "time": "T+0ms",
+        "event": "Inbound connection parsed from 45.154.255.89",
+        "status": "info"
+      },
+      {
+        "time": "T+5ms",
+        "event": "Authoritative DNS resolution (SPF/DMARC): FAIL/FAIL",
+        "status": "danger"
+      },
+      {
+        "time": "T+12ms",
+        "event": "Heuristic 200+ threat matrix score: 99/100",
+        "status": "danger"
+      }
+    ],
+    "mitreAttack": [
+      {
+        "id": "T1566.002",
+        "name": "Spearphishing Link",
+        "tactic": "Initial Access"
+      },
+      {
+        "id": "T1036.005",
+        "name": "Masquerading",
+        "tactic": "Defense Evasion"
+      }
+    ]
+  },
+  {
+    "id": "eml-mtnwzb80",
+    "title": "[GitHub] Security advisory fixed",
+    "shortBadge": "✅ 100% Safe",
+    "userFriendlyCategory": "Clean Authentic Electronic Mail",
+    "threatScore": 5,
+    "severity": "safe",
+    "severityLabel": "100% Safe & Verified (Green)",
+    "isThreat": false,
+    "simpleTakeaway": "Email is authentic and safe (<50 score) from verified domain \"github.com\". Live DNS authentication passed.",
+    "whatHappened": [
+      "Sender: notifications@github.com (GitHub Notifications)",
+      "Live DNS checks: SPF=PASS, DKIM=PASS, DMARC=PASS",
+      "Extracted 1 link(s) and 0 attachment(s)."
+    ],
+    "whatToDo": "Safe to read and deliver to user inbox.",
+    "sender": {
+      "displayName": "GitHub Notifications",
+      "email": "notifications@github.com",
+      "envelopeFrom": "notifications@github.com",
+      "replyTo": "notifications@github.com",
+      "originIp": "192.30.252.205",
+      "asn": "AS36459 GitHub, Inc.",
+      "location": "Dulles, United States",
+      "lat": 38.9639,
+      "lng": -77.4496,
+      "reverseDns": "out-22.smtp.github.com",
+      "isSpoofed": false,
+      "spoofType": "None Detected (Sender Identity Aligned)"
+    },
+    "recipient": {
+      "email": "engineering@mycompany.com",
+      "department": "Enterprise Security Posture",
+      "targetHost": "mx1.enterprise.local"
+    },
+    "metadata": {
+      "subject": "[GitHub] Security advisory fixed",
+      "date": "Sat, 05 Sep 2026 05:00:10 GMT",
+      "messageId": "<threatlens-1788584410450@mta>",
+      "userAgent": "Standard Enterprise Mailer",
+      "contentType": "text/html; charset=UTF-8"
+    },
+    "auth": {
+      "spf": {
+        "status": "PASS",
+        "exists": true,
+        "friendlyName": "SPF (Sender Identity Check)",
+        "explanation": "Queries authoritative DNS TXT records to verify if the sending IP is authorized.",
+        "message": "Authenticated via SPF check for github.com"
+      },
+      "dkim": {
+        "status": "PASS",
+        "exists": true,
+        "friendlyName": "DKIM (Cryptographic Anti-Tamper Seal)",
+        "explanation": "Validates public key cryptographic signature against sender domain DNS.",
+        "message": "DKIM cryptographic signature verified for github.com"
+      },
+      "dmarc": {
+        "status": "PASS",
+        "exists": true,
+        "friendlyName": "DMARC (Domain Rule Alignment)",
+        "explanation": "Enforces domain policy for SPF/DKIM alignment and recipient protection.",
+        "message": "DMARC alignment verified for github.com"
+      }
+    },
+    "urls": [
+      {
+        "url": "https://github.com/security",
+        "domain": "github.com",
+        "risk": "Low",
+        "vtScore": "0/89 Clean (Verified Host)",
+        "ip": "20.207.73.82",
+        "domainAge": "Verified Enterprise Host",
+        "isPunycode": false
+      }
+    ],
+    "attachments": [],
+    "hashes": {
+      "sha256": "dcace49939b74cf7fec28b4512ad4ee558627b9e808248a061ffb21c79b01e8d",
+      "md5": "10c3cf011ec68c425be39aced020393f"
+    },
+    "threatVerdict": {
+      "headline": "Authentic Electronic Message",
+      "confidence": 98.6,
+      "analysis": [
+        "Sender identity \"notifications@github.com\" cross-referenced with live DNS records.",
+        "Cryptographic posture: SPF PASS | DKIM PASS | DMARC PASS.",
+        "Extracted 1 web links and 0 attachments scanned."
+      ],
+      "recommendation": "Deliver to user inbox."
+    },
+    "timeline": [
+      {
+        "time": "T+0ms",
+        "event": "Inbound connection parsed from 192.30.252.205",
+        "status": "info"
+      },
+      {
+        "time": "T+5ms",
+        "event": "Authoritative DNS resolution (SPF/DMARC): PASS/PASS",
+        "status": "success"
+      },
+      {
+        "time": "T+12ms",
+        "event": "Heuristic 200+ threat matrix score: 5/100",
+        "status": "success"
+      }
+    ],
+    "mitreAttack": []
+  },
+  {
+    "id": "eml-mtnwyj0b",
+    "title": "Dear Students,",
+    "shortBadge": "⚠️ Mild Threat",
+    "userFriendlyCategory": "Credential Harvesting Phish",
+    "threatScore": 55,
+    "severity": "medium",
+    "severityLabel": "Mild Threat (Orange)",
+    "isThreat": true,
+    "simpleTakeaway": "Mild Threat (Orange): \"Dear Students,\". SPF Authentication Failed (IP not authorized in DNS). DKIM Cryptographic Signature Missing or Tampered.",
+    "whatHappened": [
+      "Sender: inbound-delivery@external-gateway.net (External Sender)",
+      "Live DNS checks: SPF=FAIL, DKIM=FAIL, DMARC=FAIL",
+      "Extracted 0 link(s) and 0 attachment(s)."
+    ],
+    "whatToDo": "Quarantine email immediately. Block sender IP and domain. Do not click links or execute attachments.",
+    "sender": {
+      "displayName": "External Sender",
+      "email": "inbound-delivery@external-gateway.net",
+      "envelopeFrom": "inbound-delivery@external-gateway.net",
+      "replyTo": "inbound-delivery@external-gateway.net",
+      "originIp": "0.0.0.0",
+      "asn": "AS-UNRESOLVED",
+      "location": "Unresolved City, Unresolved Country",
+      "lat": 0,
+      "lng": 0,
+      "reverseDns": "None (No PTR record)",
+      "isSpoofed": false,
+      "spoofType": "None Detected (Sender Identity Aligned)"
+    },
+    "recipient": {
+      "email": "security-team@enterprise-corp.com",
+      "department": "Enterprise Security Posture",
+      "targetHost": "mx1.enterprise.local"
+    },
+    "metadata": {
+      "subject": "Dear Students,",
+      "date": "Sat, 05 Sep 2026 04:59:33 GMT",
+      "messageId": "<threatlens-1788584373193@mta>",
+      "userAgent": "Standard Enterprise Mailer",
+      "contentType": "text/html; charset=UTF-8"
+    },
+    "auth": {
+      "spf": {
+        "status": "FAIL",
+        "exists": false,
+        "friendlyName": "SPF (Sender Identity Check)",
+        "explanation": "Queries authoritative DNS TXT records to verify if the sending IP is authorized.",
+        "message": "Domain has no valid SPF record published in DNS"
+      },
+      "dkim": {
+        "status": "FAIL",
+        "exists": false,
+        "friendlyName": "DKIM (Cryptographic Anti-Tamper Seal)",
+        "explanation": "Validates public key cryptographic signature against sender domain DNS.",
+        "message": "DKIM signature missing or failed cryptographic validation"
+      },
+      "dmarc": {
+        "status": "FAIL",
+        "exists": false,
+        "friendlyName": "DMARC (Domain Rule Alignment)",
+        "explanation": "Enforces domain policy for SPF/DKIM alignment and recipient protection.",
+        "message": "No DMARC policy record found at _dmarc.external-gateway.net"
+      }
+    },
+    "urls": [],
+    "attachments": [],
+    "hashes": {
+      "sha256": "180c9d76c9047e3531f07c0ed86c3101b4afca966556c8de22b944dab4e7dde5",
+      "md5": "ff8c7c6ad3d95e453d9c4af54e99da05"
+    },
+    "threatVerdict": {
+      "headline": "Malicious Vector Intercepted by ThreatLens AI",
+      "confidence": 99.1,
+      "analysis": [
+        "Sender identity \"inbound-delivery@external-gateway.net\" cross-referenced with live DNS records.",
+        "Cryptographic posture: SPF FAIL | DKIM FAIL | DMARC FAIL.",
+        "Extracted 0 web links and 0 attachments scanned."
+      ],
+      "recommendation": "Quarantine message and isolate headers."
+    },
+    "timeline": [
+      {
+        "time": "T+0ms",
+        "event": "Inbound connection parsed from 0.0.0.0",
+        "status": "info"
+      },
+      {
+        "time": "T+5ms",
+        "event": "Authoritative DNS resolution (SPF/DMARC): FAIL/FAIL",
+        "status": "danger"
+      },
+      {
+        "time": "T+12ms",
+        "event": "Heuristic 200+ threat matrix score: 55/100",
+        "status": "danger"
+      }
+    ],
+    "mitreAttack": [
+      {
+        "id": "T1566.002",
+        "name": "Spearphishing Link",
+        "tactic": "Initial Access"
+      },
+      {
+        "id": "T1036.005",
+        "name": "Masquerading",
+        "tactic": "Defense Evasion"
+      }
+    ]
+  },
+  {
     "id": "eml-mtnwoksp",
     "title": "Your Stripe Receipt",
     "shortBadge": "✅ Verified Clean",
