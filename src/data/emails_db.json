@@ -1,5 +1,105 @@
 [
   {
+    "id": "eml-mtnxppik",
+    "title": "Dear Students,",
+    "shortBadge": "✅ 100% Safe",
+    "userFriendlyCategory": "Clean Authentic Electronic Mail",
+    "threatScore": 0,
+    "severity": "safe",
+    "severityLabel": "100% Safe & Verified (Green)",
+    "isThreat": false,
+    "simpleTakeaway": "Email is authentic and safe (<50 score) from verified domain \"external-gateway.net\". Live DNS authentication passed.",
+    "whatHappened": [
+      "Sender: inbound-delivery@external-gateway.net (External Sender)",
+      "Live DNS checks: SPF=PASS, DKIM=PASS, DMARC=PASS",
+      "Extracted 0 link(s) and 0 attachment(s)."
+    ],
+    "whatToDo": "Safe to read and deliver to user inbox.",
+    "sender": {
+      "displayName": "External Sender",
+      "email": "inbound-delivery@external-gateway.net",
+      "envelopeFrom": "inbound-delivery@external-gateway.net",
+      "replyTo": "inbound-delivery@external-gateway.net",
+      "originIp": "0.0.0.0",
+      "asn": "AS-UNRESOLVED",
+      "location": "Unresolved City, Unresolved Country",
+      "lat": 0,
+      "lng": 0,
+      "reverseDns": "None (No PTR record)",
+      "isSpoofed": false,
+      "spoofType": "None Detected (Sender Identity Aligned)"
+    },
+    "recipient": {
+      "email": "security-team@enterprise-corp.com",
+      "department": "Enterprise Security Posture",
+      "targetHost": "mx1.enterprise.local"
+    },
+    "metadata": {
+      "subject": "Dear Students,",
+      "date": "Sat, 05 Sep 2026 05:20:45 GMT",
+      "messageId": "<threatlens-1788585645536@mta>",
+      "userAgent": "Standard Enterprise Mailer",
+      "contentType": "text/html; charset=UTF-8"
+    },
+    "auth": {
+      "spf": {
+        "status": "PASS",
+        "exists": true,
+        "friendlyName": "SPF (Sender Identity Check)",
+        "explanation": "Queries authoritative DNS TXT records to verify if the sending IP is authorized.",
+        "message": "Domain \"external-gateway.net\" resolved in DNS"
+      },
+      "dkim": {
+        "status": "PASS",
+        "exists": true,
+        "friendlyName": "DKIM (Cryptographic Anti-Tamper Seal)",
+        "explanation": "Validates public key cryptographic signature against sender domain DNS.",
+        "message": "DKIM signature valid"
+      },
+      "dmarc": {
+        "status": "PASS",
+        "exists": true,
+        "friendlyName": "DMARC (Domain Rule Alignment)",
+        "explanation": "Enforces domain policy for SPF/DKIM alignment and recipient protection.",
+        "message": "DMARC alignment satisfied via verified SPF & MX"
+      }
+    },
+    "urls": [],
+    "attachments": [],
+    "hashes": {
+      "sha256": "2f64ea136954cf6e4e2178c55606b47853f34c6b4d1ba94795c16e7b5c99c1a2",
+      "md5": "c323c61894af9a99bd67290543bdd2a7"
+    },
+    "threatVerdict": {
+      "headline": "Authentic Electronic Message",
+      "confidence": 98.6,
+      "analysis": [
+        "Sender identity \"inbound-delivery@external-gateway.net\" cross-referenced with live DNS records.",
+        "Cryptographic posture: SPF PASS | DKIM PASS | DMARC PASS.",
+        "Extracted 0 web links and 0 attachments scanned."
+      ],
+      "recommendation": "Deliver to user inbox."
+    },
+    "timeline": [
+      {
+        "time": "T+0ms",
+        "event": "Inbound connection parsed from 0.0.0.0",
+        "status": "info"
+      },
+      {
+        "time": "T+5ms",
+        "event": "Authoritative DNS resolution (SPF/DMARC): PASS/PASS",
+        "status": "success"
+      },
+      {
+        "time": "T+12ms",
+        "event": "Heuristic 200+ threat matrix score: 0/100",
+        "status": "success"
+      }
+    ],
+    "mitreAttack": []
+  },
+  {
     "id": "eml-mtnxgagi",
     "title": "Notice regarding invoice inquiry",
     "shortBadge": "⚠️ Mild Threat",
