@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Microscope, 
   UploadCloud, 
@@ -25,16 +25,53 @@ import { SAMPLE_EMAILS } from '../data/threatData';
 import { ForensicReportModal } from './ForensicReportModal';
 import { parseEmailForensics } from '../engine/emailParser';
 
+const STORAGE_KEY = 'threatlens_custom_emails_db';
+
 export const ForensicsView: React.FC = () => {
   const [selectedEmail, setSelectedEmail] = useState<any>(SAMPLE_EMAILS[0]);
   const [activeDeepTab, setActiveDeepTab] = useState<'summary' | 'overview' | 'headers' | 'timeline' | 'iocs' | 'mitre'>('summary');
   const [isRawModalOpen, setIsRawModalOpen] = useState(false);
   const [rawEmailText, setRawEmailText] = useState('');
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-  const [customEmails, setCustomEmails] = useState<any[]>([]);
+  const [customEmails, setCustomEmails] = useState<any[]>(() => {
+    try {
+      const cached = localStorage.getItem(STORAGE_KEY);
+      return cached ? JSON.parse(cached) : [];
+    } catch (_) {
+      return [];
+    }
+  });
+
+  // Sync with persistent backend database on load
+  useEffect(() => {
+    fetch('/api/emails')
+      .then(res => res.json())
+      .then(data => {
+        if (data.emails && Array.isArray(data.emails) && data.emails.length > 0) {
+          setCustomEmails(prev => {
+            const combined = [...data.emails, ...prev];
+            const uniqueMap = new Map();
+            combined.forEach(e => { if (e && e.id) uniqueMap.set(e.id, e); });
+            const merged = Array.from(uniqueMap.values());
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch (_) {}
+            return merged;
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const allEmails = [...customEmails, ...SAMPLE_EMAILS];
   const isThreat = selectedEmail.isThreat;
+
+  const saveAndSelectEmail = (email: any) => {
+    setCustomEmails(prev => {
+      const updated = [email, ...prev.filter(e => e.id !== email.id)];
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(updated)); } catch (_) {}
+      return updated;
+    });
+    setSelectedEmail(email);
+  };
 
   const parseRawEmail = async (rawText: string, fileName: string = 'custom_uploaded.eml') => {
     // Try backend API first
@@ -47,8 +84,7 @@ export const ForensicsView: React.FC = () => {
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.email) {
-          setCustomEmails(prev => [data.email, ...prev]);
-          setSelectedEmail(data.email);
+          saveAndSelectEmail(data.email);
           return;
         }
       }
@@ -57,8 +93,7 @@ export const ForensicsView: React.FC = () => {
     }
 
     const parsedEmail = parseEmailForensics(rawText, fileName);
-    setCustomEmails(prev => [parsedEmail, ...prev]);
-    setSelectedEmail(parsedEmail);
+    saveAndSelectEmail(parsedEmail);
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

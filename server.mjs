@@ -1,9 +1,38 @@
 import http from 'http';
 import dns from 'dns/promises';
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 
 const PORT = process.env.PORT || 3001;
-const analyzedEmails = [];
+const DB_PATH = path.resolve('./src/data/emails_db.json');
+
+// In-memory cache + persistent disk DB
+let analyzedEmails = [];
+
+// Load persistent emails from database
+try {
+  if (fs.existsSync(DB_PATH)) {
+    const data = fs.readFileSync(DB_PATH, 'utf8');
+    analyzedEmails = JSON.parse(data);
+    console.log(`[ThreatLens DB] Loaded ${analyzedEmails.length} persistent emails from ${DB_PATH}`);
+  } else {
+    fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+    fs.writeFileSync(DB_PATH, JSON.stringify([], null, 2), 'utf8');
+  }
+} catch (err) {
+  console.error('[ThreatLens DB] Error initializing storage:', err.message);
+  analyzedEmails = [];
+}
+
+function persistEmail(email) {
+  try {
+    analyzedEmails = [email, ...analyzedEmails.filter(e => e.id !== email.id)].slice(0, 100);
+    fs.writeFileSync(DB_PATH, JSON.stringify(analyzedEmails, null, 2), 'utf8');
+  } catch (err) {
+    console.error('[ThreatLens DB] Failed to write email to disk:', err.message);
+  }
+}
 
 // Clean extracted URL
 function cleanUrl(rawUrl) {
@@ -178,9 +207,9 @@ async function analyzeEmail(rawInput, sourceName = 'inbox_stream.eml') {
     originIp = originIp.replace(/[\[\]]/g, '').trim();
   } else {
     for (const hop of receivedHops) {
-      const ipMatch = hop.match(/\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b/);
-      if (ipMatch && !ipMatch[0].startsWith('127.') && !ipMatch[0].startsWith('10.') && !ipMatch[0].startsWith('192.168.')) {
-        originIp = ipMatch[0];
+      const match = hop.match(/\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b/);
+      if (match && !match[0].startsWith('127.') && !match[0].startsWith('10.') && !match[0].startsWith('192.168.')) {
+        originIp = match[0];
         break;
       }
     }
@@ -538,7 +567,7 @@ async function analyzeEmail(rawInput, sourceName = 'inbox_stream.eml') {
     ] : []
   };
 
-  analyzedEmails.unshift(parsedEmail);
+  persistEmail(parsedEmail);
   return parsedEmail;
 }
 
@@ -558,7 +587,7 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'GET' && url.pathname === '/api/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ONLINE', service: 'ThreatLens Genuine Forensic Engine', port: PORT, count: analyzedEmails.length }));
+    res.end(JSON.stringify({ status: 'ONLINE', service: 'ThreatLens Persistent Forensic Engine', port: PORT, count: analyzedEmails.length }));
     return;
   }
 
@@ -602,5 +631,5 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`[ThreatLens Genuine Forensic Backend] Running on http://localhost:${PORT}`);
+  console.log(`[ThreatLens Persistent Forensic Backend] Running on http://localhost:${PORT}`);
 });
