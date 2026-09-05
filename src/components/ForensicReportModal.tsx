@@ -1,5 +1,5 @@
-import React from 'react';
-import { ShieldCheck, Download, X, AlertOctagon, CheckCircle2, ShieldAlert } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { ShieldCheck, Download, X, AlertOctagon, CheckCircle2, ShieldAlert, ArrowLeft, Printer } from 'lucide-react';
 
 interface ForensicReportModalProps {
   email: any;
@@ -12,6 +12,16 @@ export const ForensicReportModal: React.FC<ForensicReportModalProps> = ({
   isOpen,
   onClose
 }) => {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen || !email) return null;
 
   const isThreat = email.isThreat;
@@ -28,27 +38,43 @@ export const ForensicReportModal: React.FC<ForensicReportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl border border-slate-200 my-8 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         
-        {/* Action Bar (Hidden when printing to PDF) */}
+        {/* Top Action Bar (Hidden when printing to PDF) */}
         <div className="no-print flex items-center justify-between px-6 py-4 bg-slate-900 text-white border-b border-slate-800">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-indigo-400" />
-            <span className="font-bold text-sm">ThreatLens Forensic Incident Document View</span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onClose}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-bold rounded-lg border border-slate-700 transition-all cursor-pointer shadow-xs"
+              title="Go back to Forensics Investigation"
+            >
+              <ArrowLeft className="w-4 h-4 text-indigo-400" />
+              Back to Forensics
+            </button>
+            <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-slate-700">
+              <ShieldCheck className="w-4 h-4 text-indigo-400" />
+              <span className="font-bold text-xs text-slate-300">Forensic Incident Document</span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <button 
               onClick={handlePrint}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg shadow transition-all cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg shadow-sm transition-all cursor-pointer"
             >
-              <Download className="w-4 h-4" />
-              Download PDF Report
+              <Printer className="w-4 h-4" />
+              <span>Print / Save PDF</span>
             </button>
             <button 
               onClick={onClose}
               className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+              title="Close and go back"
             >
               <X className="w-5 h-5" />
             </button>
@@ -228,6 +254,27 @@ export const ForensicReportModal: React.FC<ForensicReportModalProps> = ({
             <div>VERIFIED COMPLIANT WITH NIST SP 800-86 & MITRE ATT&CK</div>
           </div>
 
+        </div>
+
+        {/* Bottom Action Bar (Hidden when printing to PDF) */}
+        <div className="no-print flex items-center justify-between px-6 py-4 bg-slate-50 border-t border-slate-200">
+          <button
+            onClick={onClose}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-xl border border-slate-300 transition-all cursor-pointer shadow-2xs"
+          >
+            <ArrowLeft className="w-4 h-4 text-indigo-600" />
+            Back to Forensics
+          </button>
+
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={handlePrint}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
+            >
+              <Printer className="w-4 h-4" />
+              Print / Save PDF
+            </button>
+          </div>
         </div>
 
       </div>

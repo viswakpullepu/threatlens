@@ -1,5 +1,105 @@
 [
   {
+    "id": "eml-mtnxsj15",
+    "title": "=?utf-8?q?Join_the_NoBroker_Ambassador_Club_&_Start_Earning!_? =?utf-8?q?ð°ð?",
+    "shortBadge": "✅ 100% Safe",
+    "userFriendlyCategory": "Clean Authentic Electronic Mail",
+    "threatScore": 0,
+    "severity": "safe",
+    "severityLabel": "100% Safe & Verified (Green)",
+    "isThreat": false,
+    "simpleTakeaway": "Email is authentic and safe (<50 score) from verified domain \"nobroker.in\". Live DNS authentication passed.",
+    "whatHappened": [
+      "Sender: yerravula.sree@nobroker.in (yerravula.sree)",
+      "Live DNS checks: SPF=PASS, DKIM=PASS, DMARC=PASS",
+      "Extracted 0 link(s) and 0 attachment(s)."
+    ],
+    "whatToDo": "Safe to read and deliver to user inbox.",
+    "sender": {
+      "displayName": "yerravula.sree",
+      "email": "yerravula.sree@nobroker.in",
+      "envelopeFrom": "yerravula.sree@nobroker.in",
+      "replyTo": "content-type;",
+      "originIp": "209.85.220.41",
+      "asn": "AS15169 Google LLC",
+      "location": "Mountain View, United States",
+      "lat": 37.3861,
+      "lng": -122.084,
+      "reverseDns": "mail-sor-f41.google.com",
+      "isSpoofed": false,
+      "spoofType": "None Detected (Sender Identity Aligned)"
+    },
+    "recipient": {
+      "email": "viswakpullepu1@gmail.com",
+      "department": "Enterprise Security Posture",
+      "targetHost": "mx1.enterprise.local"
+    },
+    "metadata": {
+      "subject": "=?utf-8?q?Join_the_NoBroker_Ambassador_Club_&_Start_Earning!_? =?utf-8?q?ð°ð?",
+      "date": "Fri, 14 Aug 2026 00:08:03 -0700 (PDT)",
+      "messageId": "<6a7ebed3.a70a48cb.10d1bf.5f6a@mx.google.com>",
+      "userAgent": "Standard Enterprise Mailer",
+      "contentType": "multipart/mixed; boundary=\"==============!89021499352626881==\""
+    },
+    "auth": {
+      "spf": {
+        "status": "PASS",
+        "exists": true,
+        "friendlyName": "SPF (Sender Identity Check)",
+        "explanation": "Queries authoritative DNS TXT records to verify if the sending IP is authorized.",
+        "message": "Live DNS SPF Record Verified: \"v=spf1 include:spf.mandrillapp.com include:spf.netcoreglobal.com inclu...\""
+      },
+      "dkim": {
+        "status": "PASS",
+        "exists": true,
+        "friendlyName": "DKIM (Cryptographic Anti-Tamper Seal)",
+        "explanation": "Validates public key cryptographic signature against sender domain DNS.",
+        "message": "DKIM-Signature verified for domain nobroker.in"
+      },
+      "dmarc": {
+        "status": "PASS",
+        "exists": true,
+        "friendlyName": "DMARC (Domain Rule Alignment)",
+        "explanation": "Enforces domain policy for SPF/DKIM alignment and recipient protection.",
+        "message": "Live DNS DMARC Policy: \"v=DMARC1; p=quarantine; rua=mailto:postmaster@nobroker.in; r\""
+      }
+    },
+    "urls": [],
+    "attachments": [],
+    "hashes": {
+      "sha256": "02e8265f6c7405f7e6cbda12be91e68a5a2e4c6717f0368d946f13ec2708cdcd",
+      "md5": "36fa157d6eb45e498229cf657e819eea"
+    },
+    "threatVerdict": {
+      "headline": "Authentic Electronic Message",
+      "confidence": 98.6,
+      "analysis": [
+        "Sender identity \"yerravula.sree@nobroker.in\" cross-referenced with live DNS records.",
+        "Cryptographic posture: SPF PASS | DKIM PASS | DMARC PASS.",
+        "Extracted 0 web links and 0 attachments scanned."
+      ],
+      "recommendation": "Deliver to user inbox."
+    },
+    "timeline": [
+      {
+        "time": "T+0ms",
+        "event": "Inbound connection parsed from 209.85.220.41",
+        "status": "info"
+      },
+      {
+        "time": "T+5ms",
+        "event": "Authoritative DNS resolution (SPF/DMARC): PASS/PASS",
+        "status": "success"
+      },
+      {
+        "time": "T+12ms",
+        "event": "Heuristic 200+ threat matrix score: 0/100",
+        "status": "success"
+      }
+    ],
+    "mitreAttack": []
+  },
+  {
     "id": "eml-mtnxppik",
     "title": "Dear Students,",
     "shortBadge": "✅ 100% Safe",
