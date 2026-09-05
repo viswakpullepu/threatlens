@@ -200,31 +200,84 @@ async function analyzeEmail(rawInput, sourceName = 'inbox_stream.eml') {
   const replyDomain = replyToEmail.includes('@') ? replyToEmail.split('@')[1].toLowerCase() : senderDomain;
 
   // ==========================================
-  // 4. IP & GEOLOCATION EXTRACTION
+  // 4. IP & GEOLOCATION EXTRACTION (GENUINE LIVE LOOKUP)
   // ==========================================
-  let originIp = headers['x-originating-ip'] || headers['x-sender-ip'] || '';
+  let originIp = headers['x-originating-ip'] || headers['x-sender-ip'] || headers['client-ip'] || headers['x-forwarded-for'] || headers['x-real-ip'] || '';
   if (originIp) {
-    originIp = originIp.replace(/[\[\]]/g, '').trim();
-  } else {
+    originIp = originIp.replace(/[\[\]]/g, '').trim().split(',')[0].trim();
+  }
+
+  // Look in Authentication-Results header (e.g. sender IP is X.X.X.X)
+  if (!originIp && headers['authentication-results']) {
+    const authIpMatch = headers['authentication-results'].match(/(?:sender IP is|ip=)\s*([0-9]{1,3}(?:\.[0-9]{1,3}){3})/i);
+    if (authIpMatch) originIp = authIpMatch[1];
+  }
+
+  // Scan Received hops for external public IPs
+  if (!originIp) {
     for (const hop of receivedHops) {
       const match = hop.match(/\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b/);
-      if (match && !match[0].startsWith('127.') && !match[0].startsWith('10.') && !match[0].startsWith('192.168.')) {
+      if (match && !match[0].startsWith('127.') && !match[0].startsWith('10.') && !match[0].startsWith('192.168.') && !match[0].startsWith('172.16.') && !match[0].startsWith('172.31.')) {
         originIp = match[0];
         break;
       }
     }
   }
-  if (!originIp) {
-    const ipInBody = cleanText.match(/\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b/);
-    originIp = (ipInBody && !ipInBody[0].startsWith('127.') && !ipInBody[0].startsWith('192.168.')) ? ipInBody[0] : '185.220.101.5';
+
+  // If no IP is in headers, resolve actual live DNS A record for the sender domain
+  if (!originIp && senderDomain && senderDomain.includes('.')) {
+    try {
+      const aRecords = await dns.resolve4(senderDomain).catch(() => []);
+      if (aRecords && aRecords.length > 0) {
+        originIp = aRecords[0];
+      } else {
+        const mxRecs = await dns.resolveMx(senderDomain).catch(() => []);
+        if (mxRecs && mxRecs.length > 0) {
+          const mxA = await dns.resolve4(mxRecs[0].exchange).catch(() => []);
+          if (mxA && mxA.length > 0) originIp = mxA[0];
+        }
+      }
+    } catch (_) {}
   }
 
+  if (!originIp) originIp = '0.0.0.0';
+
+  // Live Geolocation and ASN Query
+  let geoCity = 'Unresolved City';
+  let geoCountry = 'Unresolved Country';
+  let geoAsn = 'AS-UNRESOLVED';
+  let geoLat = 0;
+  let geoLng = 0;
   let reverseDnsHost = 'None (No PTR record)';
-  try {
-    const ptr = await dns.reverse(originIp);
-    if (ptr && ptr.length > 0) reverseDnsHost = ptr[0];
-  } catch (_) {
-    reverseDnsHost = `relay.${senderDomain || 'unresolved-host.net'}`;
+
+  if (originIp && originIp !== '0.0.0.0' && !originIp.startsWith('127.') && !originIp.startsWith('10.') && !originIp.startsWith('192.168.')) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
+      const geoRes = await fetch(`http://ip-api.com/json/${originIp}?fields=status,message,country,city,lat,lon,isp,as,reverse`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (geoRes.ok) {
+        const geoData = await geoRes.json();
+        if (geoData.status === 'success') {
+          geoCity = geoData.city || 'Unknown City';
+          geoCountry = geoData.country || 'Unknown Country';
+          geoAsn = geoData.as || geoData.isp || 'Autonomous System';
+          geoLat = geoData.lat || 0;
+          geoLng = geoData.lon || 0;
+          if (geoData.reverse) reverseDnsHost = geoData.reverse;
+        }
+      }
+    } catch (_) {}
+
+    // If reverse DNS wasn't returned by geo service, do live PTR resolution
+    if (reverseDnsHost === 'None (No PTR record)') {
+      try {
+        const ptr = await dns.reverse(originIp);
+        if (ptr && ptr.length > 0) reverseDnsHost = ptr[0];
+      } catch (_) {
+        reverseDnsHost = `${originIp}.in-addr.arpa`;
+      }
+    }
   }
 
   // ==========================================
@@ -465,8 +518,9 @@ async function analyzeEmail(rawInput, sourceName = 'inbox_stream.eml') {
   }
 
   threatScore = Math.min(threatScore, 99);
-  const isThreatDetected = threatScore > 35;
-  const severity = threatScore > 80 ? 'critical' : (threatScore > 55 ? 'high' : (threatScore > 30 ? 'medium' : 'safe'));
+  const isThreatDetected = threatScore >= 50;
+  const severity = threatScore > 80 ? 'critical' : (threatScore >= 50 ? 'medium' : 'safe');
+  const severityLabel = threatScore > 80 ? 'Critical Threat (Red)' : (threatScore >= 50 ? 'Mild Threat (Orange)' : '100% Safe & Verified (Green)');
 
   const sha256 = crypto.createHash('sha256').update(rawInput).digest('hex');
   const md5 = crypto.createHash('md5').update(rawInput).digest('hex');
@@ -474,17 +528,17 @@ async function analyzeEmail(rawInput, sourceName = 'inbox_stream.eml') {
   const parsedEmail = {
     id: 'eml-' + Date.now().toString(36),
     title: subject || sourceName,
-    shortBadge: isThreatDetected ? '🚨 Threat Intercepted' : '✅ Verified Clean',
+    shortBadge: threatScore > 80 ? '🚨 Critical Threat' : (threatScore >= 50 ? '⚠️ Mild Threat' : '✅ 100% Safe'),
     userFriendlyCategory: isThreatDetected 
       ? (isSpoofed ? 'Brand Impersonation / BEC' : (attachments.length > 0 ? 'Malicious Attachment Dropper' : 'Credential Harvesting Phish'))
       : 'Clean Authentic Electronic Mail',
     threatScore,
     severity,
-    severityLabel: isThreatDetected ? (severity === 'critical' ? 'Critical Danger' : 'High Threat') : '100% Safe',
+    severityLabel,
     isThreat: isThreatDetected,
     simpleTakeaway: isThreatDetected
-      ? `Threat identified: "${subject}". ${reasons.slice(0, 2).join('. ')}.`
-      : `Email is authentic from verified domain "${senderDomain}". Live DNS authentication passed.`,
+      ? `${severityLabel}: "${subject}". ${reasons.slice(0, 2).join('. ')}.`
+      : `Email is authentic and safe (<50 score) from verified domain "${senderDomain}". Live DNS authentication passed.`,
     whatHappened: [
       `Sender: ${senderEmail} (${senderDisplayName})`,
       `Live DNS checks: SPF=${spfStatus}, DKIM=${dkimStatus}, DMARC=${dmarcStatus}`,
@@ -499,8 +553,10 @@ async function analyzeEmail(rawInput, sourceName = 'inbox_stream.eml') {
       envelopeFrom: envelopeEmail,
       replyTo: replyToEmail,
       originIp: originIp,
-      asn: 'AS202425 (Internet Route)',
-      location: 'Frankfurt, Germany',
+      asn: geoAsn,
+      location: `${geoCity}, ${geoCountry}`,
+      lat: geoLat,
+      lng: geoLng,
       reverseDns: reverseDnsHost,
       isSpoofed,
       spoofType: spoofDetail

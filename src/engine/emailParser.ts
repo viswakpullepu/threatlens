@@ -276,10 +276,17 @@ export function parseEmailForensics(rawInput: string, fileName = 'custom_email.e
   // ==========================================
   // 4. IP EXTRACTION & GEOLOCATION
   // ==========================================
-  let originIp = headers['x-originating-ip'] || headers['x-sender-ip'] || '';
+  let originIp = headers['x-originating-ip'] || headers['x-sender-ip'] || headers['client-ip'] || headers['x-forwarded-for'] || headers['x-real-ip'] || '';
   if (originIp) {
-    originIp = originIp.replace(/[\[\]]/g, '').trim();
-  } else {
+    originIp = originIp.replace(/[\[\]]/g, '').trim().split(',')[0].trim();
+  }
+
+  if (!originIp && (headers['authentication-results'] || authResults)) {
+    const authIpMatch = (headers['authentication-results'] || authResults).match(/(?:sender IP is|ip=)\s*([0-9]{1,3}(?:\.[0-9]{1,3}){3})/i);
+    if (authIpMatch) originIp = authIpMatch[1];
+  }
+
+  if (!originIp) {
     for (const hop of receivedHops) {
       const match = hop.match(/\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b/);
       if (match && !match[0].startsWith('127.') && !match[0].startsWith('10.') && !match[0].startsWith('192.168.')) {
@@ -288,9 +295,14 @@ export function parseEmailForensics(rawInput: string, fileName = 'custom_email.e
       }
     }
   }
+
   if (!originIp) {
     const ipInBody = cleanText.match(/\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b/);
-    originIp = (ipInBody && !ipInBody[0].startsWith('127.') && !ipInBody[0].startsWith('192.168.')) ? ipInBody[0] : '185.220.101.5';
+    if (ipInBody && !ipInBody[0].startsWith('127.') && !ipInBody[0].startsWith('192.168.')) {
+      originIp = ipInBody[0];
+    } else {
+      originIp = '0.0.0.0';
+    }
   }
 
   // ==========================================
@@ -432,9 +444,10 @@ export function parseEmailForensics(rawInput: string, fileName = 'custom_email.e
   }
 
   threatScore = Math.min(threatScore, 99);
-  const isThreat = threatScore > 35;
+  const isThreat = threatScore >= 50;
   const severity: 'safe' | 'medium' | 'high' | 'critical' = 
-    threatScore > 80 ? 'critical' : (threatScore > 55 ? 'high' : (threatScore > 30 ? 'medium' : 'safe'));
+    threatScore > 80 ? 'critical' : (threatScore >= 50 ? 'medium' : 'safe');
+  const severityLabel = threatScore > 80 ? 'Critical Danger (Red)' : (threatScore >= 50 ? 'Mild Threat (Orange)' : '100% Safe & Verified (Green)');
 
   const category = isThreat 
     ? (isSpoofed ? 'Brand Impersonation / Spoof' : (attachments.length > 0 ? 'Malicious Attachment Dropper' : 'Spearphishing & Link Extraction'))
@@ -443,14 +456,14 @@ export function parseEmailForensics(rawInput: string, fileName = 'custom_email.e
   return {
     id: 'eml-' + Math.random().toString(36).substring(2, 9),
     title: subjectRaw || fileName,
-    shortBadge: isThreat ? '🚨 Threat Intercepted' : '✅ Verified Clean',
+    shortBadge: threatScore > 80 ? '🚨 Critical Threat' : (threatScore >= 50 ? '⚠️ Mild Threat' : '✅ 100% Safe'),
     userFriendlyCategory: category,
     threatScore,
     severity,
-    severityLabel: isThreat ? (severity === 'critical' ? 'Critical Danger' : 'High Threat') : '100% Safe',
+    severityLabel,
     isThreat,
     simpleTakeaway: isThreat 
-      ? `Threat Intercepted: "${subjectRaw}". ${reasons.slice(0, 2).join('. ')}.`
+      ? `${severityLabel}: "${subjectRaw}". ${reasons.slice(0, 2).join('. ')}.`
       : `Email from "${senderDomain}" passed authentication checks. No malicious indicators found.`,
     whatHappened: [
       `Sender: ${senderEmail} (${senderDisplayName})`,
@@ -466,9 +479,9 @@ export function parseEmailForensics(rawInput: string, fileName = 'custom_email.e
       envelopeFrom: envelopeEmail,
       replyTo: replyToEmail,
       originIp: originIp,
-      asn: 'AS202425 (Internet Transit)',
-      location: 'Frankfurt, Germany',
-      reverseDns: `relay.${senderDomain}`,
+      asn: originIp === '0.0.0.0' ? 'AS-UNRESOLVED' : `AS-DIRECT (${originIp})`,
+      location: originIp === '0.0.0.0' ? 'Unresolved Location' : 'External Origin',
+      reverseDns: originIp === '0.0.0.0' ? `relay.${senderDomain}` : `${originIp}.in-addr.arpa`,
       isSpoofed,
       spoofType: spoofDetail
     },

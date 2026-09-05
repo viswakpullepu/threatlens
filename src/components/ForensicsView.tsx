@@ -152,7 +152,10 @@ export const ForensicsView: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           {allEmails.map((sample) => {
             const isSelected = selectedEmail.id === sample.id;
-            const sampleIsThreat = sample.isThreat;
+            const score = sample.threatScore ?? 0;
+            const badgeClass = score > 80 
+              ? 'bg-red-100 text-red-700' 
+              : (score >= 50 ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700');
             return (
               <div
                 key={sample.id}
@@ -165,10 +168,8 @@ export const ForensicsView: React.FC = () => {
               >
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      sampleIsThreat ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'
-                    }`}>
-                      {sample.shortBadge || (sampleIsThreat ? '🚨 Threat' : '✅ Clean')}
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${badgeClass}`}>
+                      {sample.shortBadge || (score > 80 ? '🚨 Critical' : (score >= 50 ? '⚠️ Mild' : '✅ Safe'))}
                     </span>
                     <span className="text-[10px] font-mono text-slate-400">
                       Score: {sample.threatScore}
@@ -188,48 +189,59 @@ export const ForensicsView: React.FC = () => {
       </div>
 
       {/* 2. OVERALL THREAT RESULT BANNER */}
-      <div className={`bg-white border ${
-        isThreat ? 'border-red-200' : 'border-emerald-200'
-      } rounded-2xl p-6 shadow-xs relative overflow-hidden`}>
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                isThreat ? 'bg-red-100 text-red-800 border border-red-300' : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-              }`}>
-                <span className={`w-2.5 h-2.5 rounded-full ${isThreat ? 'bg-red-600 animate-pulse' : 'bg-emerald-600'} mr-2`} />
-                {isThreat ? '⚠️ THREAT CONFIRMED: ' + (selectedEmail.userFriendlyCategory || selectedEmail.category || 'MALICIOUS').toUpperCase() : '✅ 100% VERIFIED SAFE EMAIL'}
-              </span>
-              <span className="text-xs text-slate-400 font-mono">Case ID: #{selectedEmail.id}</span>
-              <span className="text-xs text-slate-400">|</span>
-              <span className="text-xs text-slate-500">{selectedEmail.metadata?.date || 'Today'}</span>
-            </div>
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-              {selectedEmail.metadata?.subject}
-            </h2>
-            <p className="text-xs text-slate-600 max-w-3xl leading-relaxed">
-              {selectedEmail.simpleTakeaway || selectedEmail.threatVerdict?.headline}
-            </p>
-          </div>
+      {(() => {
+        const score = selectedEmail.threatScore ?? 0;
+        const bannerBorder = score > 80 ? 'border-red-200' : (score >= 50 ? 'border-orange-200' : 'border-emerald-200');
+        const badgeStyle = score > 80 
+          ? 'bg-red-100 text-red-800 border border-red-300' 
+          : (score >= 50 ? 'bg-orange-100 text-orange-800 border border-orange-300' : 'bg-emerald-100 text-emerald-800 border border-emerald-300');
+        const dotColor = score > 80 ? 'bg-red-600 animate-pulse' : (score >= 50 ? 'bg-orange-500 animate-pulse' : 'bg-emerald-600');
+        const scoreColor = score > 80 ? 'text-red-600' : (score >= 50 ? 'text-orange-600' : 'text-emerald-600');
+        const label = score > 80 
+          ? '🚨 CRITICAL THREAT (>80)' 
+          : (score >= 50 ? '⚠️ MILD THREAT (50-80)' : '✅ 100% VERIFIED SAFE (<50)');
 
-          <div className="flex items-center gap-4 shrink-0">
-            <div className="text-right">
-              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Threat Score</div>
-              <div className={`text-3xl font-black font-mono ${isThreat ? 'text-red-600' : 'text-emerald-600'}`}>
-                {selectedEmail.threatScore}<span className="text-xs font-normal text-slate-400">/100</span>
+        return (
+          <div className={`bg-white border ${bannerBorder} rounded-2xl p-6 shadow-xs relative overflow-hidden`}>
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${badgeStyle}`}>
+                    <span className={`w-2.5 h-2.5 rounded-full ${dotColor} mr-2`} />
+                    {label}: {selectedEmail.userFriendlyCategory || 'INSPECTION'}
+                  </span>
+                  <span className="text-xs text-slate-400 font-mono">Case ID: #{selectedEmail.id}</span>
+                  <span className="text-xs text-slate-400">|</span>
+                  <span className="text-xs text-slate-500">{selectedEmail.metadata?.date || 'Today'}</span>
+                </div>
+                <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+                  {selectedEmail.metadata?.subject}
+                </h2>
+                <p className="text-xs text-slate-600 max-w-3xl leading-relaxed">
+                  {selectedEmail.simpleTakeaway || selectedEmail.threatVerdict?.headline}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-4 shrink-0">
+                <div className="text-right">
+                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Threat Score</div>
+                  <div className={`text-3xl font-black font-mono ${scoreColor}`}>
+                    {selectedEmail.threatScore}<span className="text-xs font-normal text-slate-400">/100</span>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => setIsReportModalOpen(true)}
+                  className="inline-flex items-center gap-2 px-5 py-3 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
+                >
+                  <FileDown className="w-4 h-4 text-indigo-400" />
+                  Export Forensic PDF Report
+                </button>
               </div>
             </div>
-
-            <button 
-              onClick={() => setIsReportModalOpen(true)}
-              className="inline-flex items-center gap-2 px-5 py-3 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
-            >
-              <FileDown className="w-4 h-4 text-indigo-400" />
-              Export Forensic PDF Report
-            </button>
           </div>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* 3. SENDER & RECIPIENT BREAKDOWN + SENDER SPOOFING CHECK */}
       <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">

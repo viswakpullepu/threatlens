@@ -354,9 +354,8 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
     const pulseRings: THREE.Mesh[] = [];
     allThreatLocations.forEach((threat) => {
       const pos = latLngToVector3(threat.lat, threat.lng, radius + 0.8);
-      const isCritical = threat.severity === 'critical';
-      const isSafe = threat.severity === 'safe';
-      const color = isSafe ? 0x10b981 : (isCritical ? 0xef4444 : 0xf97316);
+      const score = threat.threatScore ?? 0;
+      const color = score > 80 ? 0xef4444 : (score >= 50 ? 0xf97316 : 0x10b981);
 
       // Core Solid Pin
       const pinGeo = new THREE.SphereGeometry(1.9, 16, 16);
@@ -414,9 +413,8 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
       const points = curve.getPoints(60);
       const curveGeo = new THREE.BufferGeometry().setFromPoints(points);
 
-      const isSafe = threat.severity === 'safe';
-      const isCritical = threat.severity === 'critical';
-      const arcColor = isSafe ? 0x10b981 : (isCritical ? 0xef4444 : 0xf97316);
+      const score = threat.threatScore ?? 0;
+      const arcColor = score > 80 ? 0xef4444 : (score >= 50 ? 0xf97316 : 0x10b981);
 
       const curveMat = new THREE.LineBasicMaterial({
         color: arcColor,
@@ -618,11 +616,11 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
             </div>
             <div>
               <span className={`text-[11px] font-bold px-3 py-0.5 rounded-full border ${
-                threatScore > 75 
+                threatScore > 80 
                   ? 'bg-red-100 text-red-700 border-red-200' 
-                  : (threatScore > 40 ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200')
+                  : (threatScore >= 50 ? 'bg-orange-100 text-orange-700 border-orange-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200')
               }`}>
-                {selectedThreat.severityLabel || (threatScore > 75 ? 'Critical Attack' : 'Safe & Verified')}
+                {threatScore > 80 ? 'Critical Threat (Red)' : (threatScore >= 50 ? 'Mild Threat (Orange)' : '100% Safe (Green)')}
               </span>
             </div>
           </div>
@@ -636,7 +634,7 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
                 cx="40" 
                 cy="40" 
                 r="34" 
-                stroke={threatScore > 75 ? '#ef4444' : (threatScore > 40 ? '#f59e0b' : '#10b981')} 
+                stroke={threatScore > 80 ? '#ef4444' : (threatScore >= 50 ? '#f97316' : '#10b981')} 
                 strokeWidth="7" 
                 strokeDasharray="213.6" 
                 strokeDashoffset={strokeDashoffset} 
@@ -644,7 +642,7 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
                 fill="none" 
               />
             </svg>
-            <ShieldAlert className={`w-6 h-6 absolute ${threatScore > 40 ? 'text-red-500' : 'text-emerald-500'}`} />
+            <ShieldAlert className={`w-6 h-6 absolute ${threatScore > 80 ? 'text-red-500' : (threatScore >= 50 ? 'text-orange-500' : 'text-emerald-500')}`} />
           </div>
         </div>
 
@@ -737,7 +735,11 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
               {isSearchOpen && searchResults.length > 0 && (
                 <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-30 max-h-60 overflow-y-auto divide-y divide-slate-100">
                   {searchResults.map((item) => {
-                    const isSafe = item.severity === 'safe';
+                    const score = item.threatScore ?? 0;
+                    const dotClass = score > 80 ? 'bg-red-500' : (score >= 50 ? 'bg-orange-500' : 'bg-emerald-500');
+                    const badgeClass = score > 80 
+                      ? 'bg-red-100 text-red-800' 
+                      : (score >= 50 ? 'bg-orange-100 text-orange-800' : 'bg-emerald-100 text-emerald-800');
                     return (
                       <div
                         key={item.id}
@@ -750,16 +752,14 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
                       >
                         <div className="min-w-0">
                           <div className="font-bold text-slate-900 truncate flex items-center gap-1.5">
-                            <span className={`w-2 h-2 rounded-full ${isSafe ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                            <span className={`w-2 h-2 rounded-full ${dotClass}`} />
                             {item.city}, {item.country}
                           </div>
                           <div className="text-[11px] text-slate-500 truncate font-mono">
                             {item.sender} • {item.ip}
                           </div>
                         </div>
-                        <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
-                          isSafe ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
-                        }`}>
+                        <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${badgeClass}`}>
                           {item.threatScore}/100
                         </span>
                       </div>
@@ -905,7 +905,11 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
             <div className="space-y-2.5 mt-4 max-h-[380px] overflow-y-auto pr-1">
               {allThreatLocations.map((item) => {
                 const isItemActive = selectedThreat.id === item.id;
-                const isSafe = item.severity === 'safe';
+                const score = item.threatScore ?? 0;
+                const dotClass = score > 80 ? 'bg-red-500' : (score >= 50 ? 'bg-orange-500' : 'bg-emerald-500');
+                const badgeClass = score > 80 
+                  ? 'bg-red-100 text-red-800' 
+                  : (score >= 50 ? 'bg-orange-100 text-orange-800' : 'bg-emerald-100 text-emerald-800');
                 return (
                   <div
                     key={item.id}
@@ -919,7 +923,7 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
                     <div className="flex items-start justify-between gap-2">
                       <div className="space-y-1 min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <span className={`w-2 h-2 rounded-full shrink-0 ${isSafe ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${dotClass}`} />
                           <span className="text-xs font-bold text-slate-900 truncate">
                             {item.city}, {item.country}
                           </span>
@@ -936,9 +940,7 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
                       </div>
 
                       <div className="text-right shrink-0">
-                        <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
-                          isSafe ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
-                        }`}>
+                        <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${badgeClass}`}>
                           {item.threatScore}/100
                         </span>
                       </div>

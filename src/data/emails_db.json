@@ -1,5 +1,205 @@
 [
   {
+    "id": "eml-mtnwoksp",
+    "title": "Your Stripe Receipt",
+    "shortBadge": "✅ Verified Clean",
+    "userFriendlyCategory": "Clean Authentic Electronic Mail",
+    "threatScore": 5,
+    "severity": "safe",
+    "severityLabel": "100% Safe",
+    "isThreat": false,
+    "simpleTakeaway": "Email is authentic from verified domain \"stripe.com\". Live DNS authentication passed.",
+    "whatHappened": [
+      "Sender: billing@stripe.com (Stripe Billing)",
+      "Live DNS checks: SPF=PASS, DKIM=PASS, DMARC=PASS",
+      "Extracted 0 link(s) and 0 attachment(s)."
+    ],
+    "whatToDo": "Safe to read and deliver to user inbox.",
+    "sender": {
+      "displayName": "Stripe Billing",
+      "email": "billing@stripe.com",
+      "envelopeFrom": "billing@stripe.com",
+      "replyTo": "billing@stripe.com",
+      "originIp": "198.137.150.231",
+      "asn": "AS16509 Amazon.com, Inc.",
+      "location": "San Francisco, United States",
+      "lat": 37.7736,
+      "lng": -122.401,
+      "reverseDns": "198.137.150.231.in-addr.arpa",
+      "isSpoofed": false,
+      "spoofType": "None Detected (Sender Identity Aligned)"
+    },
+    "recipient": {
+      "email": "user@mycompany.com",
+      "department": "Enterprise Security Posture",
+      "targetHost": "mx1.enterprise.local"
+    },
+    "metadata": {
+      "subject": "Your Stripe Receipt",
+      "date": "Sat, 05 Sep 2026 04:51:46 GMT",
+      "messageId": "<threatlens-1788583906790@mta>",
+      "userAgent": "Standard Enterprise Mailer",
+      "contentType": "text/html; charset=UTF-8"
+    },
+    "auth": {
+      "spf": {
+        "status": "PASS",
+        "exists": true,
+        "friendlyName": "SPF (Sender Identity Check)",
+        "explanation": "Queries authoritative DNS TXT records to verify if the sending IP is authorized.",
+        "message": "Authenticated via SPF check for stripe.com"
+      },
+      "dkim": {
+        "status": "PASS",
+        "exists": true,
+        "friendlyName": "DKIM (Cryptographic Anti-Tamper Seal)",
+        "explanation": "Validates public key cryptographic signature against sender domain DNS.",
+        "message": "DKIM cryptographic signature verified for stripe.com"
+      },
+      "dmarc": {
+        "status": "PASS",
+        "exists": true,
+        "friendlyName": "DMARC (Domain Rule Alignment)",
+        "explanation": "Enforces domain policy for SPF/DKIM alignment and recipient protection.",
+        "message": "DMARC alignment verified for stripe.com"
+      }
+    },
+    "urls": [],
+    "attachments": [],
+    "hashes": {
+      "sha256": "8c529d6f09a713847f6105e95660ae01923ac4a4804945e87f89f8f4a191334f",
+      "md5": "201cb09ae51fabb40927e84848887007"
+    },
+    "threatVerdict": {
+      "headline": "Authentic Electronic Message",
+      "confidence": 98.6,
+      "analysis": [
+        "Sender identity \"billing@stripe.com\" cross-referenced with live DNS records.",
+        "Cryptographic posture: SPF PASS | DKIM PASS | DMARC PASS.",
+        "Extracted 0 web links and 0 attachments scanned."
+      ],
+      "recommendation": "Deliver to user inbox."
+    },
+    "timeline": [
+      {
+        "time": "T+0ms",
+        "event": "Inbound connection parsed from 198.137.150.231",
+        "status": "info"
+      },
+      {
+        "time": "T+5ms",
+        "event": "Authoritative DNS resolution (SPF/DMARC): PASS/PASS",
+        "status": "success"
+      },
+      {
+        "time": "T+12ms",
+        "event": "Heuristic 200+ threat matrix score: 5/100",
+        "status": "success"
+      }
+    ],
+    "mitreAttack": []
+  },
+  {
+    "id": "eml-mtnwnwh1",
+    "title": "Security Alert: New sign-in",
+    "shortBadge": "✅ Verified Clean",
+    "userFriendlyCategory": "Clean Authentic Electronic Mail",
+    "threatScore": 5,
+    "severity": "safe",
+    "severityLabel": "100% Safe",
+    "isThreat": false,
+    "simpleTakeaway": "Email is authentic from verified domain \"google.com\". Live DNS authentication passed.",
+    "whatHappened": [
+      "Sender: alerts@google.com (Google Alerts)",
+      "Live DNS checks: SPF=PASS, DKIM=PASS, DMARC=PASS",
+      "Extracted 0 link(s) and 0 attachment(s)."
+    ],
+    "whatToDo": "Safe to read and deliver to user inbox.",
+    "sender": {
+      "displayName": "Google Alerts",
+      "email": "alerts@google.com",
+      "envelopeFrom": "alerts@google.com",
+      "replyTo": "alerts@google.com",
+      "originIp": "209.85.216.50",
+      "asn": "AS15169 Google LLC",
+      "location": "Mountain View, United States",
+      "lat": 37.3861,
+      "lng": -122.084,
+      "reverseDns": "mail-pj1-f50.google.com",
+      "isSpoofed": false,
+      "spoofType": "None Detected (Sender Identity Aligned)"
+    },
+    "recipient": {
+      "email": "admin@company.com",
+      "department": "Enterprise Security Posture",
+      "targetHost": "mx1.enterprise.local"
+    },
+    "metadata": {
+      "subject": "Security Alert: New sign-in",
+      "date": "Sat, 05 Sep 2026 04:51:19 GMT",
+      "messageId": "<threatlens-1788583879142@mta>",
+      "userAgent": "Standard Enterprise Mailer",
+      "contentType": "text/html; charset=UTF-8"
+    },
+    "auth": {
+      "spf": {
+        "status": "PASS",
+        "exists": true,
+        "friendlyName": "SPF (Sender Identity Check)",
+        "explanation": "Queries authoritative DNS TXT records to verify if the sending IP is authorized.",
+        "message": "Authenticated via SPF check for google.com"
+      },
+      "dkim": {
+        "status": "PASS",
+        "exists": true,
+        "friendlyName": "DKIM (Cryptographic Anti-Tamper Seal)",
+        "explanation": "Validates public key cryptographic signature against sender domain DNS.",
+        "message": "DKIM cryptographic signature verified for google.com"
+      },
+      "dmarc": {
+        "status": "PASS",
+        "exists": true,
+        "friendlyName": "DMARC (Domain Rule Alignment)",
+        "explanation": "Enforces domain policy for SPF/DKIM alignment and recipient protection.",
+        "message": "DMARC alignment verified for google.com"
+      }
+    },
+    "urls": [],
+    "attachments": [],
+    "hashes": {
+      "sha256": "2369930de212a0b6284ba51515bc1fa397b29ef79be175c92f2faf349bc8316d",
+      "md5": "9491f8aebf7d22699ee1c281181a799f"
+    },
+    "threatVerdict": {
+      "headline": "Authentic Electronic Message",
+      "confidence": 98.6,
+      "analysis": [
+        "Sender identity \"alerts@google.com\" cross-referenced with live DNS records.",
+        "Cryptographic posture: SPF PASS | DKIM PASS | DMARC PASS.",
+        "Extracted 0 web links and 0 attachments scanned."
+      ],
+      "recommendation": "Deliver to user inbox."
+    },
+    "timeline": [
+      {
+        "time": "T+0ms",
+        "event": "Inbound connection parsed from 209.85.216.50",
+        "status": "info"
+      },
+      {
+        "time": "T+5ms",
+        "event": "Authoritative DNS resolution (SPF/DMARC): PASS/PASS",
+        "status": "success"
+      },
+      {
+        "time": "T+12ms",
+        "event": "Heuristic 200+ threat matrix score: 5/100",
+        "status": "success"
+      }
+    ],
+    "mitreAttack": []
+  },
+  {
     "id": "eml-mtnw2sx9",
     "title": "Dear Students,",
     "shortBadge": "🚨 Threat Intercepted",
