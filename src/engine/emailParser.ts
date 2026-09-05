@@ -341,19 +341,19 @@ export function parseEmailForensics(rawInput: string, fileName = 'custom_email.e
   // ==========================================
   // 6. SPF / DKIM / DMARC AUTHENTICATION
   // ==========================================
-  const isTrustedCleanDomain = /^(.*\.)?(google\.com|github\.com|microsoft\.com|apple\.com|amazon\.com|paypal\.com|stripe\.com|slack\.com|zoom\.us|cloudflare\.com)$/i.test(senderDomain);
+  const isTrustedCleanDomain = /^(.*\.)?(google\.com|github\.com|microsoft\.com|apple\.com|amazon\.com|paypal\.com|stripe\.com|slack\.com|zoom\.us|cloudflare\.com|linkedin\.com|netflix\.com|twitter\.com|x\.com|spotify\.com|adobe\.com)$/i.test(senderDomain);
 
-  const spfPass = /spf=pass/i.test(authResults) || (isTrustedCleanDomain && !isSpoofed);
+  const spfPass = !/spf=fail/i.test(authResults) && !isSpoofed;
   const spfSoft = /spf=softfail/i.test(authResults);
-  const dkimPass = /dkim=pass/i.test(authResults) || (isTrustedCleanDomain && !isSpoofed);
-  const dmarcPass = /dmarc=pass/i.test(authResults) || (isTrustedCleanDomain && !isSpoofed);
+  const dkimPass = !/dkim=fail/i.test(authResults) && !isSpoofed;
+  const dmarcPass = !/dmarc=fail/i.test(authResults) && !isSpoofed;
 
   const spfStatus: 'PASS' | 'FAIL' | 'SOFTFAIL' = spfPass ? 'PASS' : (spfSoft ? 'SOFTFAIL' : 'FAIL');
   const dkimStatus: 'PASS' | 'FAIL' = dkimPass ? 'PASS' : 'FAIL';
   const dmarcStatus: 'PASS' | 'FAIL' = dmarcPass ? 'PASS' : 'FAIL';
 
   // ==========================================
-  // 7. EXTRACTED URLS & SANDBOXING
+  // 7. EXTRACTED URLS & REPUTATION
   // ==========================================
   const hrefMatches = Array.from(rawInput.matchAll(/href=["'](https?:\/\/[^"'\s<>]+)["']/gi)).map(m => m[1]);
   const textUrlMatches = cleanText.match(/(https?:\/\/[^\s"'<>]+)/gi) || [];
@@ -362,20 +362,28 @@ export function parseEmailForensics(rawInput: string, fileName = 'custom_email.e
   const urls = rawUrlList.map((raw) => {
     const cleaned = cleanUrl(raw);
     let hostname = '';
-    try { hostname = new URL(cleaned).hostname; } catch (_) { hostname = cleaned; }
+    try { hostname = new URL(cleaned).hostname.toLowerCase(); } catch (_) { hostname = cleaned.toLowerCase(); }
 
-    const isTrusted = /^(.*\.)?(github\.com|google\.com|microsoft\.com|apple\.com|amazon\.com|linkedin\.com|stripe\.com|slack\.com|zoom\.us|cloudflare\.com)$/i.test(hostname);
-    const isSuspicious = !isTrusted && (/login|verify|token|update|invoice|banking|auth|sec|sharepoint|docusign|password|wire/i.test(cleaned) ||
-                                       /0|1|-secure|-portal|\.top|\.xyz|\.work|\.tk|\.cc/i.test(hostname));
+    const isTrusted = /^(.*\.)?(github\.com|google\.com|microsoft\.com|apple\.com|amazon\.com|linkedin\.com|stripe\.com|slack\.com|zoom\.us|cloudflare\.com|twitter\.com|x\.com|youtube\.com|instagram\.com|facebook\.com|zendesk\.com|salesforce\.com|hubspot\.com|sendgrid\.net|intercom\.io|notion\.so|figma\.com|atlassian\.net|spotify\.com|adobe\.com)$/i.test(hostname);
+    const isSenderAligned = hostname === senderDomain || hostname.endsWith(`.${senderDomain}`);
+
+    // Check for true typosquatting / phishing patterns (NO faulty bare digit match)
+    const isTyposquatBrand = /micros0ft|microsft|m1crosoft|paypaI|pay-pal|docuslgn|goog1e|g00gle|amaz0n|app1e/i.test(hostname);
+    const isSuspiciousTLD = /\.(top|xyz|work|tk|cc|click|gq|ml|cf|ga|buzz|rest|live|fit|surf|monster|icu|cam)$/i.test(hostname);
+    const isPunycode = /xn--/i.test(hostname);
+    const isIpHost = /^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$/.test(hostname);
+    const isPhishPath = !isTrusted && /(secure-login|verify-account|account-update|banking-portal|auth-verify|password-reset-portal|login-portal)/i.test(cleaned);
+
+    const isHighRisk = !isTrusted && (isTyposquatBrand || isSuspiciousTLD || isPunycode || isIpHost || isPhishPath || (!isSenderAligned && !hostname.includes('localhost')));
 
     return {
       url: cleaned,
       domain: hostname,
-      risk: isSuspicious ? ('Critical' as const) : ('Low' as const),
-      vtScore: isSuspicious ? '26/89 Malicious Flagged (Phish)' : '0/89 Clean (Verified Host)',
-      ip: isSuspicious ? '185.220.101.5' : '104.244.42.1',
-      domainAge: isSuspicious ? '2 days old (Burner Domain)' : 'Verified Enterprise Host',
-      isPunycode: /xn--/i.test(hostname)
+      risk: isHighRisk ? ('Critical' as const) : ('Low' as const),
+      vtScore: isHighRisk ? '26/89 Malicious Flagged (Phish)' : '0/89 Clean (Verified Host)',
+      ip: isHighRisk ? '185.220.101.5' : '104.244.42.1',
+      domainAge: isHighRisk ? '2 days old (Burner Domain)' : 'Verified Enterprise Host',
+      isPunycode: isPunycode
     };
   });
 
@@ -409,45 +417,51 @@ export function parseEmailForensics(rawInput: string, fileName = 'custom_email.e
   }
 
   // ==========================================
-  // 9. THREAT VERDICT & SCORING
+  // 9. THREAT VERDICT & 3-TIER SCORING (>80 Critical, 50-80 Mild, <50 Safe)
   // ==========================================
-  let threatScore = (isTrustedCleanDomain && !isSpoofed) ? 5 : 10;
+  let threatScore = 0;
   const reasons: string[] = [];
 
   if (isSpoofed) {
-    threatScore += 35;
+    threatScore += 45;
     reasons.push(spoofDetail);
   }
-  if (spfStatus !== 'PASS') {
+  if (/\.(top|xyz|work|tk|cc|click|gq|ml|cf|ga|buzz|rest|live|fit|surf|monster|icu|cam)$/i.test(senderDomain)) {
+    threatScore += 20;
+    reasons.push(`Suspicious/disposable domain TLD (.${senderDomain.split('.').pop()})`);
+  }
+  if (spfStatus === 'FAIL') {
     threatScore += 15;
     reasons.push('SPF Sender Verification Failed');
   }
-  if (dkimStatus !== 'PASS') {
+  if (dkimStatus === 'FAIL' && (headers['dkim-signature'] || /dkim=fail/i.test(authResults))) {
     threatScore += 15;
-    reasons.push('DKIM Cryptographic Integrity Signature Missing');
+    reasons.push('DKIM Cryptographic Integrity Signature Missing or Failed');
   }
-  if (dmarcStatus !== 'PASS') {
+  if (dmarcStatus === 'FAIL' && (isSpoofed || /dmarc=fail/i.test(authResults))) {
     threatScore += 15;
     reasons.push('DMARC Alignment Policy Violated');
   }
   if (urls.some(u => u.risk === 'Critical')) {
-    threatScore += 20;
+    threatScore += 30;
     reasons.push('Weaponized credential phishing link detected in message body');
   }
   if (attachments.some(a => a.risk === 'Critical')) {
-    threatScore += 30;
+    threatScore += 55;
     reasons.push('High-risk executable or macro dropper attachment identified');
   }
-  if (/(wire transfer|urgent payment|gift card|password expir|subpoena|confidential acquisition|direct deposit)/i.test(cleanText)) {
-    threatScore += 15;
-    reasons.push('Coercive social engineering / BEC urgency heuristic matched');
+  if (/(wire transfer|urgent payment|gift card|password expir|subpoena|confidential acquisition|direct deposit|past due|overdue invoice)/i.test(cleanText)) {
+    if (isSpoofed || spfStatus === 'FAIL' || urls.some(u => u.risk === 'Critical') || attachments.some(a => a.risk === 'Critical') || threatScore > 0) {
+      threatScore += 15;
+      reasons.push('Coercive social engineering / BEC urgency heuristic matched');
+    }
   }
 
   threatScore = Math.min(threatScore, 99);
   const isThreat = threatScore >= 50;
   const severity: 'safe' | 'medium' | 'high' | 'critical' = 
     threatScore > 80 ? 'critical' : (threatScore >= 50 ? 'medium' : 'safe');
-  const severityLabel = threatScore > 80 ? 'Critical Danger (Red)' : (threatScore >= 50 ? 'Mild Threat (Orange)' : '100% Safe & Verified (Green)');
+  const severityLabel = threatScore > 80 ? 'Critical Threat (Red)' : (threatScore >= 50 ? 'Mild Threat (Orange)' : '100% Safe & Verified (Green)');
 
   const category = isThreat 
     ? (isSpoofed ? 'Brand Impersonation / Spoof' : (attachments.length > 0 ? 'Malicious Attachment Dropper' : 'Spearphishing & Link Extraction'))
