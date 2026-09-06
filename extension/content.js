@@ -1,6 +1,7 @@
 /**
  * ThreatLens AI — Live Gmail In-Mailbox Threat Shield
- * Instant threat score display next to sender name across ALL inbox rows and open emails.
+ * Persistent real-time threat score injection that stays active across all tab switches,
+ * navigation, back-to-inbox actions, folder switching, and background tab returns.
  */
 
 (function() {
@@ -18,10 +19,10 @@
     });
   }
 
-  console.log('[ThreatLens Shield] High-frequency inbox scanner started.');
+  console.log('[ThreatLens Shield] Persistent In-Mailbox Guardian active.');
 
   /**
-   * Real-Time Threat Assessment Engine
+   * Fast Threat Assessment Engine
    */
   function evaluateThreat(senderEmail, senderName, subject, snippetText) {
     let score = 5;
@@ -31,7 +32,7 @@
     const lowerSub = (subject || '').toLowerCase();
     const lowerSnippet = (snippetText || '').toLowerCase();
 
-    // 0. ThreatLens Alerts (Internal threat alerts)
+    // 0. ThreatLens Alerts (Internal system threat intercepts)
     if (lowerSub.includes('[threatlens alert]') || lowerSub.includes('high-risk threat intercepted')) {
       return {
         threatScore: 96,
@@ -43,7 +44,7 @@
       };
     }
 
-    // 1. High-severity extortion & urgent threats
+    // 1. Critical Urgency & Extortion keywords
     const criticalKeywords = [
       'pegasus', 'webcam recorded', 'bitcoin transfer', 'hacked your device',
       'password will expire', 'account suspended immediately', 'wire funds',
@@ -108,15 +109,19 @@
   }
 
   /**
-   * 1. INBOX LIST VIEW: Inject clean colored number right next to sender name
+   * INBOX LIST VIEW INJECTION:
+   * Checks the physical presence of .threatlens-number-badge so scores NEVER vanish when returning to inbox.
    */
   function injectBadgeIntoInboxRow(rowEl) {
     if (!isEnabled) return;
-    if (rowEl.getAttribute('data-tl-injected') === 'true') return;
+    
+    // If badge already exists in this row, skip
+    if (rowEl.querySelector('.threatlens-number-badge')) return;
 
-    // Locate the sender container in Gmail list rows (.yW or td.yX)
+    // Locate sender container (.yW or td.yX)
     const senderContainer = rowEl.querySelector('.yW') || rowEl.querySelector('td.yX') || rowEl.querySelector('.yX');
     if (!senderContainer) return;
+    if (senderContainer.querySelector('.threatlens-number-badge')) return;
 
     // Locate sender name span (.bqe, .zF, .yP, span[email])
     const senderSpan = senderContainer.querySelector('span[email], span[name], .bqe, .zF, .yP, span') || senderContainer;
@@ -132,9 +137,7 @@
 
     if (!senderName && !subject) return;
 
-    rowEl.setAttribute('data-tl-injected', 'true');
-
-    // Run evaluation
+    // Fast Cache Evaluation
     const cacheKey = senderName + '_' + senderEmail + '_' + subject.slice(0, 30);
     let analysis = analyzedCache.get(cacheKey);
     if (!analysis) {
@@ -156,7 +159,6 @@
     scoreSpan.title = 'ThreatLens AI Score: ' + score + '/100 (' + analysis.threatLevel + ')';
     scoreSpan.textContent = ' [' + score + ']';
 
-    // Ensure Gmail sender container does not clip our badge
     senderContainer.style.setProperty('overflow', 'visible', 'important');
     senderContainer.style.setProperty('display', 'inline-flex', 'important');
     senderContainer.style.setProperty('align-items', 'center', 'important');
@@ -173,14 +175,15 @@
   }
 
   /**
-   * 2. OPENED EMAIL VIEW: Inject clean colored number next to sender name
+   * OPENED EMAIL VIEW INJECTION
    */
   function injectBadgeIntoOpenMessage(messageEl) {
     if (!isEnabled) return;
-    if (messageEl.getAttribute('data-tl-open-injected') === 'true') return;
+    if (messageEl.querySelector('.threatlens-number-badge')) return;
 
     const senderEl = messageEl.querySelector('span[email], .gD, [email]');
     if (!senderEl) return;
+    if (senderEl.parentNode && senderEl.parentNode.querySelector('.threatlens-number-badge')) return;
 
     const senderEmail = senderEl.getAttribute('email') || senderEl.textContent.trim();
     const senderName = senderEl.getAttribute('name') || senderEl.textContent.trim() || 'Sender';
@@ -188,8 +191,6 @@
     const subject = subjectEl ? subjectEl.textContent.trim() : 'Email Thread';
     const bodyEl = messageEl.querySelector('.a3s.aiL, .a3s, [role="article"]');
     const bodyText = bodyEl ? bodyEl.innerText.slice(0, 2000) : '';
-
-    messageEl.setAttribute('data-tl-open-injected', 'true');
 
     const cacheKey = senderEmail + '_' + subject.slice(0, 30);
     let analysis = analyzedCache.get(cacheKey);
@@ -220,7 +221,7 @@
    * Comprehensive DOM Scan
    */
   function scanGmail() {
-    // 1. Scan Inbox Rows (All table rows in Gmail list)
+    // 1. Scan Inbox Rows
     const rows = document.querySelectorAll('tr.zA, tr.zE, tr.yO, [role="row"], table tbody tr');
     for (let i = 0; i < rows.length; i++) {
       injectBadgeIntoInboxRow(rows[i]);
@@ -233,21 +234,38 @@
     }
   }
 
-  // MutationObserver for continuous instant scanning as emails arrive or user scrolls
-  const observer = new MutationObserver(function(mutations) {
+  // Active MutationObserver
+  const observer = new MutationObserver(function() {
     scanGmail();
   });
 
   observer.observe(document.body, { childList: true, subtree: true });
 
-  // Immediate and continuous scanning intervals
+  // Scan immediately and on recurring high-performance interval
   scanGmail();
-  setTimeout(scanGmail, 500);
-  setTimeout(scanGmail, 1200);
-  setInterval(scanGmail, 800);
+  setInterval(scanGmail, 350);
 
-  // Hook navigation and scroll events
+  // Hook all browser navigation, back-button, tab visibility, and window focus events
+  window.addEventListener('focus', function() { scanGmail(); });
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) {
+      scanGmail();
+      setTimeout(scanGmail, 100);
+      setTimeout(scanGmail, 400);
+    }
+  });
+
+  window.addEventListener('popstate', function() {
+    scanGmail();
+    setTimeout(scanGmail, 100);
+    setTimeout(scanGmail, 400);
+  });
+
+  window.addEventListener('hashchange', function() {
+    scanGmail();
+    setTimeout(scanGmail, 100);
+    setTimeout(scanGmail, 400);
+  });
+
   window.addEventListener('scroll', scanGmail, { passive: true });
-  window.addEventListener('hashchange', scanGmail);
-  window.addEventListener('popstate', scanGmail);
 })();
