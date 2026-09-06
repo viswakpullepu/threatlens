@@ -28,17 +28,13 @@ import {
 } from 'lucide-react';
 import { ForensicReportModal } from './ForensicReportModal';
 import { parseEmailForensics } from '../engine/emailParser';
-import { getOrCreateSessionId } from './LiveEmailInterceptor';
 
-const BASE_STORAGE_KEY = 'threatlens_custom_emails_db';
+const STORAGE_KEY = 'threatlens_custom_emails_db';
 
 export const ForensicsView: React.FC = () => {
-  const sessionId = getOrCreateSessionId();
-  const STORAGE_KEY = `${BASE_STORAGE_KEY}_${sessionId}`;
-
   const [customEmails, setCustomEmails] = useState<any[]>(() => {
     try {
-      const cached = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(BASE_STORAGE_KEY);
+      const cached = localStorage.getItem(STORAGE_KEY);
       return cached ? JSON.parse(cached) : [];
     } catch (_) {
       return [];
@@ -55,14 +51,17 @@ export const ForensicsView: React.FC = () => {
 
   const refreshEmailsFromBackend = async () => {
     try {
-      const sid = getOrCreateSessionId();
-      const res = await fetch(`/api/emails?session_id=${encodeURIComponent(sid)}`, {
-        headers: { 'x-session-id': sid }
-      });
+      const res = await fetch('/api/emails');
       const data = await res.json();
       if (data.emails && Array.isArray(data.emails)) {
-        setCustomEmails(data.emails);
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data.emails)); } catch (_) {}
+        setCustomEmails(prev => {
+          const combined = [...data.emails, ...prev];
+          const uniqueMap = new Map();
+          combined.forEach(e => { if (e && e.id) uniqueMap.set(e.id, e); });
+          const merged = Array.from(uniqueMap.values());
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch (_) {}
+          return merged;
+        });
         if (data.emails[0] && !selectedEmail) setSelectedEmail(data.emails[0]);
       }
     } catch (_) {}
@@ -70,10 +69,7 @@ export const ForensicsView: React.FC = () => {
 
   const checkOAuthStatus = async () => {
     try {
-      const sid = getOrCreateSessionId();
-      const res = await fetch(`/api/auth/status?session_id=${encodeURIComponent(sid)}`, {
-        headers: { 'x-session-id': sid }
-      });
+      const res = await fetch('/api/auth/status');
       const data = await res.json();
       setOauthStatus(data);
     } catch (_) {}
@@ -117,14 +113,10 @@ export const ForensicsView: React.FC = () => {
   const handleSyncGmail = async () => {
     setIsSyncing(true);
     try {
-      const sid = getOrCreateSessionId();
-      const res = await fetch(`/api/auth/google/sync?session_id=${encodeURIComponent(sid)}`, { 
-        method: 'POST',
-        headers: { 'x-session-id': sid }
-      });
+      const res = await fetch('/api/auth/google/sync', { method: 'POST' });
       const data = await res.json();
       if (data.success) {
-        setSyncMessage(`✅ Synced ${data.newCount || data.count} new messages from ${data.user?.email || 'Gmail'}!`);
+        setSyncMessage(`✅ Synced ${data.count} new messages from ${data.user?.email || 'Gmail'}!`);
         await refreshEmailsFromBackend();
       } else {
         setSyncMessage(`⚠️ Sync Notice: ${data.error}`);
@@ -139,15 +131,8 @@ export const ForensicsView: React.FC = () => {
   const handleDisconnect = async () => {
     if (!confirm('Disconnect live Gmail account?')) return;
     try {
-      const sid = getOrCreateSessionId();
-      await fetch(`/api/auth/disconnect?session_id=${encodeURIComponent(sid)}`, { 
-        method: 'POST',
-        headers: { 'x-session-id': sid }
-      });
+      await fetch('/api/auth/disconnect', { method: 'POST' });
       setOauthStatus({ connected: false });
-      setCustomEmails([]);
-      setSelectedEmail(null);
-      try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
       setSyncMessage('Disconnected Gmail account');
       setTimeout(() => setSyncMessage(null), 3000);
     } catch (_) {}
@@ -265,7 +250,7 @@ export const ForensicsView: React.FC = () => {
               </div>
             ) : (
               <a 
-                href={`/api/auth/google/login?session_id=${encodeURIComponent(sessionId)}`}
+                href="/api/auth/google/login"
                 className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer"
                 title="Connect Gmail inbox via OAuth2 (No passwords stored)"
               >

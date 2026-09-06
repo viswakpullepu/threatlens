@@ -19,8 +19,10 @@ const DB_PATH = isVercel ? '/tmp/emails_db.json' : path.resolve('./src/data/emai
 const OAUTH_PATH = isVercel ? '/tmp/oauth_tokens.json' : path.resolve('./src/data/oauth_tokens.json');
 const OAUTH_CONFIG_PATH = path.resolve('./src/data/oauth_config.json');
 
-// Multi-tenant in-memory session map: sessionId -> { tokens, user, emails: [] }
-const activeSessions = new Map();
+// In-memory cache + persistent disk/db
+let analyzedEmails = [];
+let googleTokens = null;
+let connectedUser = null;
 
 // Read config from disk or environment
 let oauthConfig = {};
@@ -35,130 +37,86 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || oauthConfig.GOOGLE_CLIE
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || oauthConfig.GOOGLE_CLIENT_SECRET || '';
 const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || oauthConfig.GOOGLE_REDIRECT_URI || 'http://localhost:3001/api/auth/google/callback';
 
-/**
- * Extract distinct session ID from incoming HTTP request.
- */
-export function extractSessionId(req, url) {
-  if (req?.headers) {
-    if (req.headers['x-session-id']) return String(req.headers['x-session-id']).trim();
-    if (req.headers['authorization'] && req.headers['authorization'].startsWith('Bearer ')) {
-      const bToken = req.headers['authorization'].slice(7).trim();
-      if (bToken && bToken.length > 3) return bToken;
-    }
-    if (req.headers['cookie']) {
-      const cookieMatch = req.headers['cookie'].match(/tl_session=([^;]+)/);
-      if (cookieMatch) return decodeURIComponent(cookieMatch[1]);
-    }
+// Load initial persistent tokens from disk (fallback)
+try {
+  if (fs.existsSync(OAUTH_PATH)) {
+    const oData = JSON.parse(fs.readFileSync(OAUTH_PATH, 'utf8'));
+    googleTokens = oData.tokens || null;
+    connectedUser = oData.user || null;
   }
-  if (url) {
-    const qSession = url.searchParams.get('session_id') || url.searchParams.get('sessionId') || url.searchParams.get('state');
-    if (qSession) return qSession.trim();
+} catch (_) {}
+
+// Load initial persistent emails from disk (fallback)
+try {
+  if (fs.existsSync(DB_PATH)) {
+    const data = fs.readFileSync(DB_PATH, 'utf8');
+    analyzedEmails = JSON.parse(data);
+  } else if (!isVercel) {
+    const dir = path.dirname(DB_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(DB_PATH, JSON.stringify([], null, 2), 'utf8');
   }
-  return 'default_client_session';
+} catch (err) {
+  analyzedEmails = [];
 }
 
-/**
- * Retrieve session state (tokens, user profile, emails) scoped to this user.
- */
-export async function getSessionState(sessionId) {
-  if (!sessionId) return { tokens: null, user: null, emails: [] };
-  
-  // 1. Check in-memory session map
-  if (activeSessions.has(sessionId)) {
-    return activeSessions.get(sessionId);
-  }
-
-  // 2. Hydrate from PostgreSQL if configured
+// Asynchronously hydrate from PostgreSQL if available
+(async () => {
   if (isPostgresConfigured()) {
     try {
-      const dbOAuth = await getOAuthFromDb(sessionId);
+      const dbOAuth = await getOAuthFromDb('primary_user');
       if (dbOAuth?.tokens) {
-        const userEmail = dbOAuth.user?.email || null;
-        const dbEmails = await getEmailsFromDb(userEmail, sessionId, 100) || [];
-        const loaded = {
-          tokens: dbOAuth.tokens,
-          user: dbOAuth.user,
-          emails: dbEmails
-        };
-        activeSessions.set(sessionId, loaded);
-        return loaded;
+        googleTokens = dbOAuth.tokens;
+        if (dbOAuth.user) connectedUser = dbOAuth.user;
+        console.log('[PostgreSQL] Loaded OAuth session for:', connectedUser?.email || 'authenticated user');
+      }
+      const dbEmails = await getEmailsFromDb(100);
+      if (Array.isArray(dbEmails) && dbEmails.length > 0) {
+        analyzedEmails = dbEmails;
+        console.log(`[PostgreSQL] Hydrated ${dbEmails.length} emails from PostgreSQL.`);
       }
     } catch (err) {
-      console.warn('[Session Hydration Warning]:', err.message);
+      console.warn('[PostgreSQL Boot Hydration Warning]:', err.message);
     }
   }
+})();
 
-  // 3. Fallback to local disk only for default_client_session
-  if (sessionId === 'default_client_session' && fs.existsSync(OAUTH_PATH)) {
-    try {
-      const oData = JSON.parse(fs.readFileSync(OAUTH_PATH, 'utf8'));
-      let localEmails = [];
-      if (fs.existsSync(DB_PATH)) {
-        localEmails = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
-      }
-      const loaded = {
-        tokens: oData.tokens || null,
-        user: oData.user || null,
-        emails: localEmails
-      };
-      activeSessions.set(sessionId, loaded);
-      return loaded;
-    } catch (_) {}
-  }
-
-  const emptySession = { tokens: null, user: null, emails: [] };
-  activeSessions.set(sessionId, emptySession);
-  return emptySession;
-}
-
-/**
- * Save updated tokens and user profile to session.
- */
-export async function saveSessionState(sessionId, tokens, user) {
-  const current = activeSessions.get(sessionId) || { emails: [] };
-  current.tokens = tokens;
-  if (user) current.user = user;
-  activeSessions.set(sessionId, current);
+function saveOAuthState(tokens, user) {
+  googleTokens = tokens;
+  if (user) connectedUser = user;
 
   // Persist to PostgreSQL if configured
   if (isPostgresConfigured()) {
-    saveOAuthToDb(tokens, user, sessionId).catch(err => {
-      console.warn('[PostgreSQL saveOAuth Error]:', err.message);
+    saveOAuthToDb(googleTokens, connectedUser, 'primary_user').catch(err => {
+      console.warn('[PostgreSQL saveOAuth Failed]:', err.message);
     });
   }
 
-  // Fallback to local disk for default session
-  if (sessionId === 'default_client_session' || !isPostgresConfigured()) {
-    try {
-      const dir = path.dirname(OAUTH_PATH);
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(OAUTH_PATH, JSON.stringify({ tokens, user, lastSynced: new Date().toISOString() }, null, 2), 'utf8');
-    } catch (_) {}
+  // Disk / memory fallback
+  try {
+    const dir = path.dirname(OAUTH_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(OAUTH_PATH, JSON.stringify({ tokens: googleTokens, user: connectedUser, lastSynced: new Date().toISOString() }, null, 2), 'utf8');
+  } catch (err) {
+    console.warn('[ThreatLens OAuth] Token memory persistence only:', err.message);
   }
 }
 
-/**
- * Persist analyzed email scoped to user/session.
- */
-export async function persistEmail(email, sessionId = 'default_client_session', ownerEmail = null) {
-  const current = activeSessions.get(sessionId) || { tokens: null, user: null, emails: [] };
-  current.emails = [email, ...current.emails.filter(e => e.id !== email.id)].slice(0, 100);
-  activeSessions.set(sessionId, current);
+function persistEmail(email) {
+  analyzedEmails = [email, ...analyzedEmails.filter(e => e.id !== email.id)].slice(0, 100);
 
-  const finalOwner = ownerEmail || current.user?.email || null;
-
-  // Persist to PostgreSQL with multi-tenant scoping
+  // Persist to PostgreSQL if configured
   if (isPostgresConfigured()) {
-    saveEmailToDb(email, finalOwner, sessionId).catch(err => {
-      console.warn('[PostgreSQL saveEmail Error]:', err.message);
+    saveEmailToDb(email).catch(err => {
+      console.warn('[PostgreSQL saveEmail Failed]:', err.message);
     });
   }
 
-  // Fallback local store
+  // Disk fallback
   try {
     const dir = path.dirname(DB_PATH);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(DB_PATH, JSON.stringify(current.emails, null, 2), 'utf8');
+    fs.writeFileSync(DB_PATH, JSON.stringify(analyzedEmails, null, 2), 'utf8');
   } catch (_) {}
 }
 
@@ -174,7 +132,7 @@ function getDynamicRedirectUri(req) {
   return GOOGLE_REDIRECT_URI;
 }
 
-function getGoogleAuthUrl(req, sessionId = 'default_client_session') {
+function getGoogleAuthUrl(req) {
   const rootUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
   const redirectUri = getDynamicRedirectUri(req);
   const options = {
@@ -183,12 +141,10 @@ function getGoogleAuthUrl(req, sessionId = 'default_client_session') {
     access_type: 'offline',
     response_type: 'code',
     prompt: 'consent',
-    state: sessionId,
     scope: [
       'https://www.googleapis.com/auth/userinfo.email',
       'https://www.googleapis.com/auth/userinfo.profile',
-      'https://www.googleapis.com/auth/gmail.readonly',
-      'https://www.googleapis.com/auth/gmail.send'
+      'https://www.googleapis.com/auth/gmail.readonly'
     ].join(' ')
   };
   return `${rootUrl}?${new URLSearchParams(options).toString()}`;
@@ -213,13 +169,13 @@ async function exchangeGoogleCodeForTokens(code, req) {
   return res.json();
 }
 
-async function refreshGoogleAccessToken(session) {
-  if (!session?.tokens?.refresh_token) return null;
+async function refreshGoogleAccessToken() {
+  if (!googleTokens?.refresh_token) return null;
   const url = 'https://oauth2.googleapis.com/token';
   const values = {
     client_id: GOOGLE_CLIENT_ID,
     client_secret: GOOGLE_CLIENT_SECRET,
-    refresh_token: session.tokens.refresh_token,
+    refresh_token: googleTokens.refresh_token,
     grant_type: 'refresh_token'
   };
 
@@ -231,7 +187,8 @@ async function refreshGoogleAccessToken(session) {
     });
     const data = await res.json();
     if (data.access_token) {
-      session.tokens.access_token = data.access_token;
+      googleTokens.access_token = data.access_token;
+      saveOAuthState(googleTokens, connectedUser);
       return data.access_token;
     }
   } catch (_) {}
@@ -248,146 +205,51 @@ async function fetchGoogleUserProfile(accessToken) {
   return null;
 }
 
-/**
- * Dispatch automated security warning email to user when a threat (Score >= 75) is intercepted.
- */
-export async function sendSecurityAlertEmail(accessToken, userEmail, email) {
-  if (!accessToken || !userEmail) return false;
+async function syncGmailInbox(accessToken, limit = 15) {
   try {
-    const subject = `🚨 [THREATLENS ALERT] High-Risk Threat Intercepted: "${email.subject || 'Suspicious Email'}"`;
-    const bodyText = [
-      `=============================================================`,
-      `🚨 THREATLENS AI INTERCEPT & DEFENSE WARNING`,
-      `=============================================================`,
-      ``,
-      `A high-severity threat has been detected and intercepted targeting your inbox.`,
-      ``,
-      `📊 THREAT METRICS:`,
-      `• Threat Score: ${email.threatScore}/100 [CRITICAL THREAT]`,
-      `• Classification: ${email.threatType || 'High-Risk Phishing / Fraud Attack'}`,
-      `• Originating Sender: ${email.sender?.name || ''} <${email.sender?.email || 'Unknown'}>`,
-      `• Origin Location: ${email.originLocation?.city || 'No Location Data'}, ${email.originLocation?.country || 'No Location Data'} (IP: ${email.originLocation?.ip || 'Undisclosed'})`,
-      ``,
-      `🔍 FORENSIC DIAGNOSTICS:`,
-      `• SPF Verification: ${email.authentication?.spf?.status || 'N/A'}`,
-      `• DKIM Cryptographic Signature: ${email.authentication?.dkim?.status || 'N/A'}`,
-      `• DMARC Policy Enforcement: ${email.authentication?.dmarc?.status || 'N/A'}`,
-      ...(email.indicators || []).map(ind => `• Flagged Indicator: [${(ind.severity || 'HIGH').toUpperCase()}] ${ind.description || ind.type}`),
-      ``,
-      `⚠️ CRITICAL ACTION REQUIRED:`,
-      `DO NOT click any links, open attachments, or reply to the sender of that email.`,
-      ``,
-      `View the complete multi-vector forensic telemetry on your ThreatLens Security Operations Center.`,
-      ``,
-      `ThreatLens Autonomous Threat Defense System`
-    ].join('\r\n');
-
-    const rfc822 = [
-      `From: ThreatLens AI Security Guard <me>`,
-      `To: ${userEmail}`,
-      `Subject: =?UTF-8?B?${Buffer.from(subject).toString('base64')}?=`,
-      `MIME-Version: 1.0`,
-      `Content-Type: text/plain; charset=UTF-8`,
-      `Content-Transfer-Encoding: 7bit`,
-      ``,
-      bodyText
-    ].join('\r\n');
-
-    const rawBase64 = Buffer.from(rfc822).toString('base64url');
-    const sendRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ raw: rawBase64 })
-    });
-
-    if (sendRes.ok) {
-      console.log(`[ThreatLens Alert] Dispatched critical security warning email to ${userEmail} for email "${email.subject}" (Score: ${email.threatScore})`);
-      return true;
-    } else {
-      const errText = await sendRes.text();
-      console.warn('[ThreatLens Alert Notice]:', errText);
-      return false;
-    }
-  } catch (err) {
-    console.warn('[ThreatLens Alert Exception]:', err.message);
-    return false;
-  }
-}
-
-/**
- * Fast parallel Gmail sync with multi-user scoping and automated high-threat warning dispatch.
- */
-export async function syncGmailInbox(accessToken, sessionId = 'default_client_session', userEmail = null, limit = 15) {
-  try {
-    const session = await getSessionState(sessionId);
-    const existingEmails = session.emails || [];
-
     // 1. Fetch message IDs from user's primary inbox
     const listRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${limit}&q=in:inbox`, {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
     
     if (listRes.status === 401) {
-      const refreshedToken = await refreshGoogleAccessToken(session);
-      if (refreshedToken) return syncGmailInbox(refreshedToken, sessionId, userEmail, limit);
+      const refreshedToken = await refreshGoogleAccessToken();
+      if (refreshedToken) return syncGmailInbox(refreshedToken, limit);
       return [];
     }
 
     const listData = await listRes.json();
     if (!listData.messages || !Array.isArray(listData.messages)) return [];
 
-    // Filter unseen messages
-    const unseenItems = listData.messages.filter(item => {
-      return !existingEmails.some(e => 
-        e.id === item.id || 
-        e.id === `gmail_${item.id}` || 
-        (e.metadata?.messageId && e.metadata.messageId.includes(item.id))
-      );
-    });
-
-    if (unseenItems.length === 0) return [];
-
     const newlyAnalyzed = [];
-    
-    // Process in parallel batches of 5 for lightning-fast response
-    const BATCH_SIZE = 5;
-    for (let i = 0; i < unseenItems.length; i += BATCH_SIZE) {
-      const batch = unseenItems.slice(i, i + BATCH_SIZE);
-      const batchResults = await Promise.allSettled(batch.map(async (item) => {
+    for (const item of listData.messages) {
+      try {
+        // Check if message was already analyzed
+        const existing = analyzedEmails.find(e => 
+          e.id === item.id || 
+          e.id === `gmail_${item.id}` || 
+          e.id === `gmail_live_${item.id}.eml` || 
+          (e.metadata && e.metadata.messageId && e.metadata.messageId.includes(item.id))
+        );
+        if (existing) continue;
+
         const msgRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${item.id}?format=raw`, {
           headers: { Authorization: `Bearer ${accessToken}` }
         });
-        if (!msgRes.ok) return null;
-        const msgData = await msgRes.json();
-        if (!msgData.raw) return null;
-
-        const rawText = Buffer.from(msgData.raw, 'base64url').toString('utf8');
-        const analysis = await analyzeEmail(rawText, `gmail_${item.id}.eml`);
-        analysis.id = item.id;
-        analysis.source = 'gmail_oauth_live';
-        analysis.ownerEmail = userEmail || session.user?.email || null;
-        analysis.sessionId = sessionId;
-
-        await persistEmail(analysis, sessionId, analysis.ownerEmail);
-
-        // Auto-dispatch critical warning email if Threat Score >= 75
-        if ((analysis.threatScore || 0) >= 75 && userEmail) {
-          sendSecurityAlertEmail(accessToken, userEmail, analysis).catch(() => {});
+        if (msgRes.ok) {
+          const msgData = await msgRes.json();
+          if (msgData.raw) {
+            const rawText = Buffer.from(msgData.raw, 'base64url').toString('utf8');
+            const analysis = await analyzeEmail(rawText, `gmail_${item.id}.eml`);
+            analysis.id = item.id;
+            analysis.source = 'gmail_oauth_live';
+            newlyAnalyzed.push(analysis);
+          }
         }
-
-        return analysis;
-      }));
-
-      for (const res of batchResults) {
-        if (res.status === 'fulfilled' && res.value) {
-          newlyAnalyzed.push(res.value);
-        }
+      } catch (e) {
+        console.error(`[Gmail Sync Error for ${item.id}]:`, e.message);
       }
     }
-
     return newlyAnalyzed;
   } catch (err) {
     console.error('[Gmail Sync Error]:', err.message);
@@ -462,7 +324,7 @@ function extractCleanEmail(raw) {
 /**
  * Genuine RFC-822 / HTML / MIME Email Threat Forensic Engine
  */
-async function analyzeEmail(rawInput, sourceName = 'inbox_stream.eml', sessionId = 'default_client_session', ownerEmail = null) {
+async function analyzeEmail(rawInput, sourceName = 'inbox_stream.eml') {
   const cleanText = htmlToCleanText(rawInput);
   const lines = cleanText.split(/\r?\n/);
   
@@ -962,8 +824,8 @@ async function analyzeEmail(rawInput, sourceName = 'inbox_stream.eml', sessionId
       originIp: originIp,
       asn: geoAsn,
       location: `${geoCity}, ${geoCountry}`,
-      lat: geoLat !== 0 ? geoLat : null,
-      lng: geoLng !== 0 ? geoLng : null,
+      lat: geoLat,
+      lng: geoLng,
       reverseDns: reverseDnsHost,
       isSpoofed,
       spoofType: spoofDetail
@@ -1030,7 +892,7 @@ async function analyzeEmail(rawInput, sourceName = 'inbox_stream.eml', sessionId
     ] : []
   };
 
-  await persistEmail(parsedEmail, sessionId, ownerEmail);
+  persistEmail(parsedEmail);
   return parsedEmail;
 }
 
@@ -1038,7 +900,7 @@ async function analyzeEmail(rawInput, sourceName = 'inbox_stream.eml', sessionId
 export async function handleRequest(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-session-id');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
@@ -1050,22 +912,15 @@ export async function handleRequest(req, res) {
   const proto = req.headers['x-forwarded-proto'] || 'http';
   const url = new URL(req.url, `${proto}://${host}`);
   const pathname = url.pathname.startsWith('/api') ? url.pathname : `/api${url.pathname === '/' ? '' : url.pathname}`;
-  const sessionId = extractSessionId(req, url);
 
   if (req.method === 'GET' && (pathname === '/api/health' || pathname === '/api/')) {
     const dbHealth = await getDbHealth();
-    const session = await getSessionState(sessionId);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ 
       status: 'ONLINE', 
-      service: 'ThreatLens Multi-Tenant Persistent Forensic Engine', 
+      service: 'ThreatLens Persistent Forensic Engine', 
       port: PORT, 
-      sessionCount: activeSessions.size,
-      currentSession: {
-        id: sessionId,
-        user: session.user?.email || null,
-        emailCount: (session.emails || []).length
-      },
+      count: analyzedEmails.length,
       database: dbHealth
     }));
     return;
@@ -1079,19 +934,16 @@ export async function handleRequest(req, res) {
   }
 
   if (req.method === 'GET' && pathname === '/api/emails') {
-    const session = await getSessionState(sessionId);
-    let emails = session.emails || [];
-
+    let emails = analyzedEmails;
     if (isPostgresConfigured()) {
-      const dbEmails = await getEmailsFromDb(session.user?.email, sessionId, 100);
+      const dbEmails = await getEmailsFromDb(100);
       if (Array.isArray(dbEmails)) {
         emails = dbEmails;
-        session.emails = dbEmails;
+        analyzedEmails = dbEmails;
       }
     }
-
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ emails, sessionId, user: session.user }));
+    res.end(JSON.stringify({ emails }));
     return;
   }
 
@@ -1099,7 +951,7 @@ export async function handleRequest(req, res) {
   // GOOGLE OAUTH & GMAIL LIVE INGESTION ROUTES
   // ==========================================
   if (req.method === 'GET' && pathname === '/api/auth/google/login') {
-    const authUrl = getGoogleAuthUrl(req, sessionId);
+    const authUrl = getGoogleAuthUrl(req);
     res.writeHead(302, { Location: authUrl });
     res.end();
     return;
@@ -1108,11 +960,10 @@ export async function handleRequest(req, res) {
   if (req.method === 'GET' && pathname === '/api/auth/google/callback') {
     const code = url.searchParams.get('code');
     const error = url.searchParams.get('error');
-    const stateSessionId = url.searchParams.get('state') || sessionId;
     const returnBase = `${proto}://${host}`;
 
     if (error || !code) {
-      res.writeHead(302, { Location: `${returnBase}/?oauth_error=${encodeURIComponent(error || 'missing_code')}&session_id=${stateSessionId}` });
+      res.writeHead(302, { Location: `${returnBase}/?oauth_error=${encodeURIComponent(error || 'missing_code')}` });
       res.end();
       return;
     }
@@ -1121,15 +972,13 @@ export async function handleRequest(req, res) {
       const tokens = await exchangeGoogleCodeForTokens(code, req);
       if (tokens.access_token) {
         const userProfile = await fetchGoogleUserProfile(tokens.access_token);
-        await saveSessionState(stateSessionId, tokens, userProfile);
+        saveOAuthState(tokens, userProfile);
 
-        // Immediately auto-sync recent inbound messages for this user
-        const synced = await syncGmailInbox(tokens.access_token, stateSessionId, userProfile?.email, 15);
-        console.log(`[ThreatLens OAuth] Successfully connected ${userProfile?.email || 'Gmail'} for session [${stateSessionId}]. Analyzed ${synced.length} emails.`);
+        // Immediately auto-sync recent inbound messages from connected mailbox
+        const synced = await syncGmailInbox(tokens.access_token, 15);
+        console.log(`[ThreatLens OAuth] Successfully connected ${userProfile?.email || 'Gmail'}. Ingested and analyzed ${synced.length} emails.`);
 
-        // Set persistent session cookie (30 days)
-        res.setHeader('Set-Cookie', `tl_session=${encodeURIComponent(stateSessionId)}; Path=/; Max-Age=2592000; SameSite=Lax`);
-        res.writeHead(302, { Location: `${returnBase}/?connected=gmail&user=${encodeURIComponent(userProfile?.email || '')}&session_id=${encodeURIComponent(stateSessionId)}&count=${synced.length}` });
+        res.writeHead(302, { Location: `${returnBase}/?connected=gmail&user=${encodeURIComponent(userProfile?.email || '')}&count=${synced.length}` });
         res.end();
         return;
       } else {
@@ -1137,47 +986,52 @@ export async function handleRequest(req, res) {
       }
     } catch (err) {
       console.error('[ThreatLens OAuth Callback Error]:', err.message);
-      res.writeHead(302, { Location: `${returnBase}/?oauth_error=${encodeURIComponent(err.message)}&session_id=${stateSessionId}` });
+      res.writeHead(302, { Location: `${returnBase}/?oauth_error=${encodeURIComponent(err.message)}` });
       res.end();
       return;
     }
   }
 
   if (req.method === 'GET' && pathname === '/api/auth/status') {
-    const session = await getSessionState(sessionId);
-    const dbHealth = await getDbHealth();
+    if (!googleTokens && isPostgresConfigured()) {
+      try {
+        const dbOAuth = await getOAuthFromDb('primary_user');
+        if (dbOAuth?.tokens) {
+          googleTokens = dbOAuth.tokens;
+          if (dbOAuth.user) connectedUser = dbOAuth.user;
+        }
+      } catch (_) {}
+    }
 
+    const dbHealth = await getDbHealth();
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
-      connected: !!(session.tokens && session.tokens.access_token),
-      provider: session.tokens ? 'gmail' : null,
-      user: session.user,
-      sessionId: sessionId,
-      totalEmailsAnalyzed: (session.emails || []).length,
+      connected: !!(googleTokens && googleTokens.access_token),
+      provider: googleTokens ? 'gmail' : null,
+      user: connectedUser,
+      totalEmailsAnalyzed: analyzedEmails.length,
       database: dbHealth
     }));
     return;
   }
 
   if (req.method === 'POST' && pathname === '/api/auth/google/sync') {
-    const session = await getSessionState(sessionId);
-    if (!session.tokens?.access_token) {
+    if (!googleTokens?.access_token) {
       res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: false, error: 'No Gmail account connected for this session' }));
+      res.end(JSON.stringify({ success: false, error: 'No Gmail account connected via OAuth' }));
       return;
     }
 
     try {
-      const newItems = await syncGmailInbox(session.tokens.access_token, sessionId, session.user?.email, 15);
+      const newItems = await syncGmailInbox(googleTokens.access_token, 15);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ 
         success: true, 
-        count: (session.emails || []).length,
+        count: analyzedEmails.length,
         newCount: newItems.length,
         newEmails: newItems,
-        emails: session.emails || [],
-        user: session.user,
-        sessionId: sessionId
+        emails: analyzedEmails,
+        user: connectedUser 
       }));
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -1187,19 +1041,16 @@ export async function handleRequest(req, res) {
   }
 
   if (req.method === 'POST' && pathname === '/api/auth/disconnect') {
-    activeSessions.delete(sessionId);
+    googleTokens = null;
+    connectedUser = null;
     if (isPostgresConfigured()) {
       try {
-        await clearOAuthFromDb(sessionId);
+        await clearOAuthFromDb('primary_user');
       } catch (_) {}
     }
-    if (sessionId === 'default_client_session' && fs.existsSync(OAUTH_PATH)) {
-      try {
-        fs.unlinkSync(OAUTH_PATH);
-      } catch (_) {}
-    }
-
-    res.setHeader('Set-Cookie', 'tl_session=; Path=/; Max-Age=0; SameSite=Lax');
+    try {
+      if (fs.existsSync(OAUTH_PATH)) fs.unlinkSync(OAUTH_PATH);
+    } catch (_) {}
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ success: true, message: 'Disconnected successfully' }));
     return;
@@ -1223,8 +1074,7 @@ export async function handleRequest(req, res) {
           if (parsedJson.fileName) sourceName = parsedJson.fileName;
         } catch (_) {}
 
-        const session = await getSessionState(sessionId);
-        const result = await analyzeEmail(rawContent, sourceName, sessionId, session.user?.email);
+        const result = await analyzeEmail(rawContent, sourceName);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, email: result }));
       } catch (err) {

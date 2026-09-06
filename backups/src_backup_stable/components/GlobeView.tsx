@@ -42,8 +42,6 @@ interface ThreatLocationItem {
   isThreat?: boolean;
 }
 
-import { getOrCreateSessionId } from './LiveEmailInterceptor';
-
 const CITY_COORDINATES: Record<string, { lat: number; lng: number; country: string }> = {
   'frankfurt': { lat: 50.1109, lng: 8.6821, country: 'Germany' },
   'kuala lumpur': { lat: 3.1390, lng: 101.6869, country: 'Malaysia' },
@@ -83,12 +81,11 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
   onOpenForensics
 }) => {
   const canvasContainerRef = useRef<HTMLDivElement>(null);
-  const sessionId = getOrCreateSessionId();
   
   // Custom emails from database & localStorage
   const [customEmails, setCustomEmails] = useState<any[]>(() => {
     try {
-      const cached = localStorage.getItem(`threatlens_custom_emails_db_${sessionId}`) || localStorage.getItem('threatlens_custom_emails_db');
+      const cached = localStorage.getItem('threatlens_custom_emails_db');
       return cached ? JSON.parse(cached) : [];
     } catch (_) {
       return [];
@@ -97,17 +94,18 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
 
   // Sync with persistent backend database on mount & listen for live telemetry broadcasts
   useEffect(() => {
-    const sid = getOrCreateSessionId();
-    fetch(`/api/emails?session_id=${encodeURIComponent(sid)}`, {
-      headers: { 'x-session-id': sid }
-    })
+    fetch('/api/emails')
       .then(res => res.json())
       .then(data => {
         if (data.emails && Array.isArray(data.emails)) {
-          setCustomEmails(data.emails);
-          try {
-            localStorage.setItem(`threatlens_custom_emails_db_${sid}`, JSON.stringify(data.emails));
-          } catch (_) {}
+          setCustomEmails(prev => {
+            const combined = [...data.emails, ...prev];
+            const uniqueMap = new Map();
+            combined.forEach(e => { if (e && e.id) uniqueMap.set(e.id, e); });
+            const merged = Array.from(uniqueMap.values());
+            try { localStorage.setItem('threatlens_custom_emails_db', JSON.stringify(merged)); } catch (_) {}
+            return merged;
+          });
         }
       })
       .catch(() => {});
@@ -128,40 +126,25 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
 
     customEmails.forEach((email) => {
       if (!email) return;
+      const rawLoc = (email.sender?.location || '').toLowerCase();
+      let matchedCoords = { lat: 40.7128, lng: -74.0060, country: 'United States', city: 'New York' };
 
-      // Extract genuine coordinates if provided by backend geo engine
-      let lat = email.sender?.lat ?? email.originLocation?.lat ?? null;
-      let lng = email.sender?.lng ?? email.originLocation?.lng ?? null;
-      let city = email.sender?.location?.split(',')[0]?.trim() || email.originLocation?.city || 'No Location Data';
-      let country = email.sender?.location?.split(',')[1]?.trim() || email.originLocation?.country || 'No Location Data';
-
-      // If lat/lng was not resolved, check city coordinate index
-      if ((lat === null || lat === 0) && city && city !== 'No Location Data') {
-        const key = city.toLowerCase();
-        if (CITY_COORDINATES[key]) {
-          lat = CITY_COORDINATES[key].lat;
-          lng = CITY_COORDINATES[key].lng;
-          country = CITY_COORDINATES[key].country;
+      for (const [key, val] of Object.entries(CITY_COORDINATES)) {
+        if (rawLoc.includes(key) || (email.sender?.originIp && email.sender.originIp.includes(key))) {
+          matchedCoords = { ...val, city: key.charAt(0).toUpperCase() + key.slice(1) };
+          break;
         }
-      }
-
-      // Default safe fallback only if coordinates were completely absent
-      if (lat === null || lng === null) {
-        lat = 50.1109; // Default reference point
-        lng = 8.6821;
-        city = 'No Location Data';
-        country = 'No Location Data';
       }
 
       if (!locations.some(b => b.id === email.id)) {
         const score = email.threatScore ?? (email.isThreat ? 85 : 0);
         locations.push({
           id: email.id || `custom-${Date.now()}`,
-          ip: email.sender?.originIp || email.originLocation?.ip || '0.0.0.0',
-          city: city,
-          country: country,
-          lat: lat,
-          lng: lng,
+          ip: email.sender?.originIp || '192.0.2.1',
+          city: matchedCoords.city,
+          country: matchedCoords.country,
+          lat: matchedCoords.lat,
+          lng: matchedCoords.lng,
           severity: score > 80 ? 'critical' : (score >= 50 ? 'high' : 'safe'),
           severityLabel: email.severityLabel || (score > 80 ? 'Critical Threat' : (score >= 50 ? 'Mild Threat' : 'Safe & Verified')),
           type: email.userFriendlyCategory || 'Analyzed Stream',
@@ -169,7 +152,7 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
           sender: email.sender?.email || 'unknown@sender.com',
           subject: email.metadata?.subject || 'Email Subject',
           threatScore: score,
-          asn: email.sender?.asn || email.originLocation?.asn || 'AS-DIRECT',
+          asn: email.sender?.asn || 'AS15169 (Direct Hop)',
           status: score > 80 ? '🚨 Critical Threat' : (score >= 50 ? '⚠️ Mild Threat' : '✅ 100% Safe & Verified'),
           timestamp: email.metadata?.date || 'Today',
           plainSummary: email.simpleTakeaway || (score > 80 ? 'High-risk payload or spoofing detected.' : (score >= 50 ? 'Mild anomalies detected.' : 'Legitimate clean message with verified cryptographic signatures.')),

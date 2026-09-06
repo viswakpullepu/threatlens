@@ -64,7 +64,7 @@ export function getPool() {
 }
 
 /**
- * Automatically creates/updates tables and indexes for multi-user isolation.
+ * Automatically creates tables and indexes if they do not already exist.
  */
 export async function initDb() {
   if (isInitialized) return true;
@@ -80,8 +80,6 @@ export async function initDb() {
         await client.query(`
           CREATE TABLE IF NOT EXISTS emails (
             id VARCHAR(255) PRIMARY KEY,
-            owner_email VARCHAR(255),
-            session_id VARCHAR(255),
             subject TEXT,
             sender_email TEXT,
             sender_name TEXT,
@@ -99,12 +97,6 @@ export async function initDb() {
             created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
           );
 
-          -- Ensure columns exist for upgraded schemas
-          ALTER TABLE emails ADD COLUMN IF NOT EXISTS owner_email VARCHAR(255);
-          ALTER TABLE emails ADD COLUMN IF NOT EXISTS session_id VARCHAR(255);
-
-          CREATE INDEX IF NOT EXISTS idx_emails_owner ON emails(owner_email);
-          CREATE INDEX IF NOT EXISTS idx_emails_session ON emails(session_id);
           CREATE INDEX IF NOT EXISTS idx_emails_created_at ON emails(created_at DESC);
           CREATE INDEX IF NOT EXISTS idx_emails_threat_score ON emails(threat_score DESC);
 
@@ -115,11 +107,9 @@ export async function initDb() {
             user_profile JSONB,
             updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
           );
-
-          CREATE INDEX IF NOT EXISTS idx_oauth_user_email ON oauth_sessions(user_email);
         `);
         isInitialized = true;
-        console.log('[PostgreSQL] Database schema with multi-user tenant isolation initialized.');
+        console.log('[PostgreSQL] Database schema verified and initialized successfully.');
         return true;
       } finally {
         client.release();
@@ -134,9 +124,9 @@ export async function initDb() {
 }
 
 /**
- * Persists an analyzed email into PostgreSQL tagged with the owner/session.
+ * Persists an analyzed email into PostgreSQL.
  */
-export async function saveEmailToDb(email, ownerEmail = null, sessionId = null) {
+export async function saveEmailToDb(email) {
   const p = getPool();
   if (!p) return false;
 
@@ -144,21 +134,17 @@ export async function saveEmailToDb(email, ownerEmail = null, sessionId = null) 
     await initDb();
     const query = `
       INSERT INTO emails (
-        id, owner_email, session_id,
-        subject, sender_email, sender_name, recipient_email,
+        id, subject, sender_email, sender_name, recipient_email,
         timestamp, threat_score, threat_level, threat_type,
         origin_ip, origin_location, auth_spf, auth_dkim, auth_dmarc,
         data, created_at
       ) VALUES (
-        $1, $2, $3,
-        $4, $5, $6, $7,
-        $8, $9, $10, $11,
-        $12, $13, $14, $15, $16,
-        $17, NOW()
+        $1, $2, $3, $4, $5,
+        $6, $7, $8, $9,
+        $10, $11, $12, $13, $14,
+        $15, NOW()
       )
       ON CONFLICT (id) DO UPDATE SET
-        owner_email = COALESCE(EXCLUDED.owner_email, emails.owner_email),
-        session_id = COALESCE(EXCLUDED.session_id, emails.session_id),
         subject = EXCLUDED.subject,
         sender_email = EXCLUDED.sender_email,
         sender_name = EXCLUDED.sender_name,
@@ -181,8 +167,6 @@ export async function saveEmailToDb(email, ownerEmail = null, sessionId = null) 
 
     const values = [
       email.id,
-      ownerEmail || email.ownerEmail || null,
-      sessionId || email.sessionId || null,
       email.subject || '(No Subject)',
       email.sender?.email || '',
       email.sender?.name || '',
@@ -208,32 +192,20 @@ export async function saveEmailToDb(email, ownerEmail = null, sessionId = null) 
 }
 
 /**
- * Retrieves analyzed emails strictly for the authenticated user/session.
+ * Retrieves analyzed emails ordered by most recent first.
  */
-export async function getEmailsFromDb(ownerEmail = null, sessionId = null, limit = 100) {
+export async function getEmailsFromDb(limit = 100) {
   const p = getPool();
   if (!p) return null;
 
   try {
     await initDb();
-    let query = '';
-    let values = [];
+    const result = await p.query(`
+      SELECT data FROM emails 
+      ORDER BY created_at DESC 
+      LIMIT $1
+    `, [limit]);
 
-    if (ownerEmail && sessionId) {
-      query = `SELECT data FROM emails WHERE owner_email = $1 OR session_id = $2 ORDER BY created_at DESC LIMIT $3`;
-      values = [ownerEmail.toLowerCase().trim(), sessionId, limit];
-    } else if (ownerEmail) {
-      query = `SELECT data FROM emails WHERE owner_email = $1 ORDER BY created_at DESC LIMIT $2`;
-      values = [ownerEmail.toLowerCase().trim(), limit];
-    } else if (sessionId) {
-      query = `SELECT data FROM emails WHERE session_id = $1 ORDER BY created_at DESC LIMIT $2`;
-      values = [sessionId, limit];
-    } else {
-      // Return empty array for unauthenticated/unscoped requests to prevent data leaks
-      return [];
-    }
-
-    const result = await p.query(query, values);
     return result.rows.map(row => {
       const parsed = typeof row.data === 'string' ? JSON.parse(row.data) : row.data;
       return parsed;
@@ -245,7 +217,7 @@ export async function getEmailsFromDb(ownerEmail = null, sessionId = null, limit
 }
 
 /**
- * Saves or updates OAuth tokens and user profile keyed by sessionId and userEmail.
+ * Saves or updates OAuth tokens and user profile in PostgreSQL.
  */
 export async function saveOAuthToDb(tokens, userProfile, sessionId = 'primary_user') {
   const p = getPool();
@@ -262,7 +234,7 @@ export async function saveOAuthToDb(tokens, userProfile, sessionId = 'primary_us
         user_profile = EXCLUDED.user_profile,
         updated_at = NOW();
     `;
-    const userEmail = userProfile?.email ? userProfile.email.toLowerCase().trim() : null;
+    const userEmail = userProfile?.email || null;
     await p.query(query, [
       sessionId,
       userEmail,
@@ -277,7 +249,7 @@ export async function saveOAuthToDb(tokens, userProfile, sessionId = 'primary_us
 }
 
 /**
- * Retrieves OAuth session state strictly by sessionId (or userEmail fallback).
+ * Retrieves OAuth session state from PostgreSQL.
  */
 export async function getOAuthFromDb(sessionId = 'primary_user') {
   const p = getPool();
@@ -288,8 +260,7 @@ export async function getOAuthFromDb(sessionId = 'primary_user') {
     const result = await p.query(`
       SELECT tokens, user_profile, updated_at 
       FROM oauth_sessions 
-      WHERE id = $1 OR user_email = $1
-      ORDER BY updated_at DESC
+      WHERE id = $1
       LIMIT 1
     `, [sessionId]);
 
@@ -307,7 +278,7 @@ export async function getOAuthFromDb(sessionId = 'primary_user') {
 }
 
 /**
- * Clears OAuth session state strictly for sessionId.
+ * Clears OAuth session state upon logout / disconnect.
  */
 export async function clearOAuthFromDb(sessionId = 'primary_user') {
   const p = getPool();
@@ -315,7 +286,7 @@ export async function clearOAuthFromDb(sessionId = 'primary_user') {
 
   try {
     await initDb();
-    await p.query('DELETE FROM oauth_sessions WHERE id = $1 OR user_email = $1', [sessionId]);
+    await p.query('DELETE FROM oauth_sessions WHERE id = $1', [sessionId]);
     return true;
   } catch (err) {
     console.error('[PostgreSQL clearOAuth Error]:', err.message);

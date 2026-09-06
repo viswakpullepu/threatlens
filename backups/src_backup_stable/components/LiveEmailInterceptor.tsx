@@ -10,45 +10,12 @@ import {
   Zap, 
   Mail,
   Volume2,
-  VolumeX,
-  Bell
+  VolumeX
 } from 'lucide-react';
 import { playRadarPingSound, playThreatAlarmSound, playSafeChimeSound } from '../engine/soundEffects';
 
 interface LiveEmailInterceptorProps {
   onSelectEmailForForensics?: (email: any) => void;
-}
-
-// Helper to get or generate persistent device session ID
-export function getOrCreateSessionId(): string {
-  if (typeof window === 'undefined') return 'default_client_session';
-  
-  // Check URL query param first
-  const params = new URLSearchParams(window.location.search);
-  const urlSession = params.get('session_id') || params.get('sessionId');
-  if (urlSession && urlSession.length > 5) {
-    try {
-      localStorage.setItem('threatlens_device_session_id', urlSession);
-      document.cookie = `tl_session=${encodeURIComponent(urlSession)}; path=/; max-age=2592000; SameSite=Lax`;
-    } catch (_) {}
-    return urlSession;
-  }
-
-  // Check localStorage
-  let sid = '';
-  try {
-    sid = localStorage.getItem('threatlens_device_session_id') || '';
-  } catch (_) {}
-
-  if (!sid) {
-    sid = 'tl_sess_' + (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36));
-    try {
-      localStorage.setItem('threatlens_device_session_id', sid);
-      document.cookie = `tl_session=${encodeURIComponent(sid)}; path=/; max-age=2592000; SameSite=Lax`;
-    } catch (_) {}
-  }
-
-  return sid;
 }
 
 export const LiveEmailInterceptor: React.FC<LiveEmailInterceptorProps> = ({
@@ -65,21 +32,11 @@ export const LiveEmailInterceptor: React.FC<LiveEmailInterceptorProps> = ({
 
   const isPollingRef = useRef(false);
   const knownIdsRef = useRef<Set<string>>(new Set());
-  const sessionIdRef = useRef<string>('default_client_session');
 
-  // Initialize session ID and known IDs from scoped localStorage
+  // Initialize known IDs from existing localStorage
   useEffect(() => {
-    sessionIdRef.current = getOrCreateSessionId();
-
-    // Request desktop notification permission quietly on mount
-    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
-      try {
-        Notification.requestPermission().catch(() => {});
-      } catch (_) {}
-    }
-
     try {
-      const cached = localStorage.getItem(`threatlens_custom_emails_db_${sessionIdRef.current}`) || localStorage.getItem('threatlens_custom_emails_db');
+      const cached = localStorage.getItem('threatlens_custom_emails_db');
       if (cached) {
         const list = JSON.parse(cached);
         if (Array.isArray(list)) {
@@ -89,7 +46,7 @@ export const LiveEmailInterceptor: React.FC<LiveEmailInterceptorProps> = ({
     } catch (_) {}
   }, []);
 
-  // Check OAuth status & run continuous active sync polling every 5 seconds
+  // Check OAuth status & run continuous active sync polling every 8 seconds
   useEffect(() => {
     let intervalId: any = null;
 
@@ -98,12 +55,8 @@ export const LiveEmailInterceptor: React.FC<LiveEmailInterceptorProps> = ({
       isPollingRef.current = true;
 
       try {
-        const sid = sessionIdRef.current || getOrCreateSessionId();
-
-        // 1. Check if OAuth account is active for this session
-        const statusRes = await fetch(`/api/auth/status?session_id=${encodeURIComponent(sid)}`, {
-          headers: { 'x-session-id': sid }
-        });
+        // 1. Check if OAuth account is active
+        const statusRes = await fetch('/api/auth/status');
         if (!statusRes.ok) return;
         const statusData = await statusRes.json();
         
@@ -112,10 +65,7 @@ export const LiveEmailInterceptor: React.FC<LiveEmailInterceptorProps> = ({
 
         if (statusData.connected) {
           setIsSyncing(true);
-          const syncRes = await fetch(`/api/auth/google/sync?session_id=${encodeURIComponent(sid)}`, { 
-            method: 'POST',
-            headers: { 'x-session-id': sid }
-          });
+          const syncRes = await fetch('/api/auth/google/sync', { method: 'POST' });
           if (syncRes.ok) {
             const syncData = await syncRes.json();
             if (syncData.success && syncData.emails) {
@@ -131,41 +81,23 @@ export const LiveEmailInterceptor: React.FC<LiveEmailInterceptorProps> = ({
               });
 
               if (newIncoming.length > 0) {
-                // Save updated list to session-scoped localStorage
+                // Save updated list to localStorage
                 try {
-                  localStorage.setItem(`threatlens_custom_emails_db_${sid}`, JSON.stringify(allEmails));
                   localStorage.setItem('threatlens_custom_emails_db', JSON.stringify(allEmails));
                 } catch (_) {}
 
                 // Broadcast live update event to all views
                 window.dispatchEvent(new CustomEvent('threatlens_emails_updated', {
-                  detail: { emails: allEmails, newEmails: newIncoming, sessionId: sid }
+                  detail: { emails: allEmails, newEmails: newIncoming }
                 }));
 
                 // Pick the most critical new email to alert the user
                 newIncoming.sort((a, b) => (b.threatScore || 0) - (a.threatScore || 0));
                 const topEmail = newIncoming[0];
-                const score = topEmail.threatScore ?? 0;
 
-                // 1. Native Desktop Notification for high-threat (>75) and all new intercepts
-                if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-                  try {
-                    const isHigh = score >= 75;
-                    new Notification(
-                      isHigh ? '🚨 CRITICAL THREAT INTERCEPTED' : '🛡️ ThreatLens Intercept',
-                      {
-                        body: isHigh
-                          ? `Threat Score: ${score}/100 [CRITICAL] - "${topEmail.subject}". DO NOT open this email!`
-                          : `New email intercepted: "${topEmail.subject}" (Score: ${score}/100)`,
-                        icon: '/favicon.ico',
-                        tag: topEmail.id
-                      }
-                    );
-                  } catch (_) {}
-                }
-
-                // 2. Play synthesized audio alert
+                // Play audio alert
                 if (soundEnabled) {
+                  const score = topEmail.threatScore ?? 0;
                   if (score > 80) {
                     playThreatAlarmSound(true);
                   } else if (score >= 50) {
@@ -175,7 +107,7 @@ export const LiveEmailInterceptor: React.FC<LiveEmailInterceptorProps> = ({
                   }
                 }
 
-                // 3. Show floating real-time interception HUD
+                // Show floating real-time interception HUD
                 setActiveNotification({
                   email: topEmail,
                   timestamp: new Date().toLocaleTimeString()
@@ -191,9 +123,9 @@ export const LiveEmailInterceptor: React.FC<LiveEmailInterceptorProps> = ({
       }
     };
 
-    // Run first check immediately, then poll every 5 seconds for fast response
+    // Run first check immediately, then poll every 8 seconds
     runSyncCycle();
-    intervalId = setInterval(runSyncCycle, 5000);
+    intervalId = setInterval(runSyncCycle, 8000);
 
     return () => {
       if (intervalId) clearInterval(intervalId);
