@@ -1,7 +1,6 @@
 /**
  * ThreatLens AI — Live Gmail In-Mailbox Threat Shield
- * Injects clean, minimalist colored threat scores directly after sender names:
- * No pills, no backgrounds — only pure colored score numbers.
+ * Instant threat score display next to sender name across ALL inbox rows and open emails.
  */
 
 (function() {
@@ -19,10 +18,10 @@
     });
   }
 
-  console.log('[ThreatLens Shield] Minimalist Colored Number Mode active.');
+  console.log('[ThreatLens Shield] High-frequency inbox scanner started.');
 
   /**
-   * Fast Threat Assessment Engine
+   * Real-Time Threat Assessment Engine
    */
   function evaluateThreat(senderEmail, senderName, subject, snippetText) {
     let score = 5;
@@ -32,19 +31,19 @@
     const lowerSub = (subject || '').toLowerCase();
     const lowerSnippet = (snippetText || '').toLowerCase();
 
-    // 0. ThreatLens Alerts (Internal alerts from system)
+    // 0. ThreatLens Alerts (Internal threat alerts)
     if (lowerSub.includes('[threatlens alert]') || lowerSub.includes('high-risk threat intercepted')) {
       return {
         threatScore: 96,
         threatLevel: 'Critical',
-        reasons: ['ThreatLens Automated Threat Warning Alert'],
+        reasons: ['ThreatLens Automated High-Risk Intercept'],
         senderEmail: senderEmail,
         senderName: senderName,
         subject: subject
       };
     }
 
-    // 1. Critical Urgency & Extortion keywords
+    // 1. High-severity extortion & urgent threats
     const criticalKeywords = [
       'pegasus', 'webcam recorded', 'bitcoin transfer', 'hacked your device',
       'password will expire', 'account suspended immediately', 'wire funds',
@@ -60,7 +59,7 @@
       }
     }
 
-    // 2. Phishing & credential harvesting indicators
+    // 2. Phishing & credential verification patterns
     const mildKeywords = [
       'verify your account', 'unauthorized login', 'security alert',
       'update payment method', 'invoice attached', 'overdue payment', 'click here to confirm',
@@ -83,14 +82,14 @@
         if (!lowerEmail.includes(brand + '.') && !lowerEmail.endsWith('@' + brand + '.com')) {
           if (lowerEmail && !lowerEmail.includes(brand)) {
             score += 45;
-            reasons.push('VIP Brand Impersonation: Displays "' + brand + '" from non-brand address (' + lowerEmail + ')');
+            reasons.push('VIP Brand Impersonation: Displays "' + brand + '" from unverified domain (' + lowerEmail + ')');
             break;
           }
         }
       }
     }
 
-    // 4. Institutional domains bonus
+    // 4. Institutional domains
     if (lowerEmail.endsWith('@google.com') || lowerEmail.endsWith('@github.com') || lowerEmail.endsWith('@microsoft.com') || lowerEmail.endsWith('@apple.com')) {
       score = Math.max(0, score - 20);
     }
@@ -109,31 +108,31 @@
   }
 
   /**
-   * INBOX LIST VIEW INJECTION: Clean colored number right after sender name
+   * 1. INBOX LIST VIEW: Inject clean colored number right next to sender name
    */
   function injectBadgeIntoInboxRow(rowEl) {
     if (!isEnabled) return;
-    if (rowEl.getAttribute('data-threatlens-row-injected') === 'true') return;
+    if (rowEl.getAttribute('data-tl-injected') === 'true') return;
 
-    // Sender cell in Gmail list view
-    const senderCell = rowEl.querySelector('td.yX, .yX, div.yW, .yW');
-    if (!senderCell) return;
+    // Locate the sender container in Gmail list rows (.yW or td.yX)
+    const senderContainer = rowEl.querySelector('.yW') || rowEl.querySelector('td.yX') || rowEl.querySelector('.yX');
+    if (!senderContainer) return;
 
-    // Sender name element
-    const senderNameEl = senderCell.querySelector('span[email], .bqe, .zF, span[name], span');
-    if (!senderNameEl) return;
-
-    const senderEmail = senderNameEl.getAttribute('email') || senderNameEl.getAttribute('name') || '';
-    const senderName = senderNameEl.textContent.trim() || 'Sender';
+    // Locate sender name span (.bqe, .zF, .yP, span[email])
+    const senderSpan = senderContainer.querySelector('span[email], span[name], .bqe, .zF, .yP, span') || senderContainer;
+    const senderName = (senderSpan ? senderSpan.textContent.trim() : '') || senderContainer.textContent.trim();
+    const senderEmail = (senderSpan ? (senderSpan.getAttribute('email') || senderSpan.getAttribute('name')) : '') || '';
 
     // Extract subject & snippet
-    const subjectEl = rowEl.querySelector('.bog, .bqr, [data-thread-id]');
+    const subjectEl = rowEl.querySelector('.bog, .bqr, .y6 span, [data-thread-id]');
     const subject = subjectEl ? subjectEl.textContent.trim() : '';
 
     const snippetEl = rowEl.querySelector('.y2');
     const snippet = snippetEl ? snippetEl.textContent.trim() : '';
 
-    rowEl.setAttribute('data-threatlens-row-injected', 'true');
+    if (!senderName && !subject) return;
+
+    rowEl.setAttribute('data-tl-injected', 'true');
 
     // Run evaluation
     const cacheKey = senderName + '_' + senderEmail + '_' + subject.slice(0, 30);
@@ -151,26 +150,34 @@
       scoreColorClass = 'tl-num-mild';
     }
 
-    // Create minimalist clean colored number element (No background, No pill)
+    // Create the pure colored score number
     const scoreSpan = document.createElement('span');
     scoreSpan.className = 'threatlens-number-badge ' + scoreColorClass;
-    scoreSpan.title = 'ThreatLens AI Threat Score: ' + score + '/100 (' + analysis.threatLevel + ')';
+    scoreSpan.title = 'ThreatLens AI Score: ' + score + '/100 (' + analysis.threatLevel + ')';
     scoreSpan.textContent = ' [' + score + ']';
 
-    // Insert immediately after sender name
-    if (senderNameEl.nextSibling) {
-      senderNameEl.parentNode.insertBefore(scoreSpan, senderNameEl.nextSibling);
+    // Ensure Gmail sender container does not clip our badge
+    senderContainer.style.setProperty('overflow', 'visible', 'important');
+    senderContainer.style.setProperty('display', 'inline-flex', 'important');
+    senderContainer.style.setProperty('align-items', 'center', 'important');
+
+    if (senderSpan && senderSpan !== senderContainer && senderSpan.parentNode) {
+      if (senderSpan.nextSibling) {
+        senderSpan.parentNode.insertBefore(scoreSpan, senderSpan.nextSibling);
+      } else {
+        senderSpan.parentNode.appendChild(scoreSpan);
+      }
     } else {
-      senderNameEl.parentNode.appendChild(scoreSpan);
+      senderContainer.appendChild(scoreSpan);
     }
   }
 
   /**
-   * OPENED EMAIL VIEW INJECTION: Clean colored number right next to sender in header
+   * 2. OPENED EMAIL VIEW: Inject clean colored number next to sender name
    */
   function injectBadgeIntoOpenMessage(messageEl) {
     if (!isEnabled) return;
-    if (messageEl.getAttribute('data-threatlens-injected') === 'true') return;
+    if (messageEl.getAttribute('data-tl-open-injected') === 'true') return;
 
     const senderEl = messageEl.querySelector('span[email], .gD, [email]');
     if (!senderEl) return;
@@ -182,7 +189,7 @@
     const bodyEl = messageEl.querySelector('.a3s.aiL, .a3s, [role="article"]');
     const bodyText = bodyEl ? bodyEl.innerText.slice(0, 2000) : '';
 
-    messageEl.setAttribute('data-threatlens-injected', 'true');
+    messageEl.setAttribute('data-tl-open-injected', 'true');
 
     const cacheKey = senderEmail + '_' + subject.slice(0, 30);
     let analysis = analyzedCache.get(cacheKey);
@@ -201,7 +208,7 @@
 
     const scoreSpan = document.createElement('span');
     scoreSpan.className = 'threatlens-number-badge ' + scoreColorClass;
-    scoreSpan.title = 'ThreatLens AI Threat Score: ' + score + '/100 (' + analysis.threatLevel + ') - ' + (analysis.reasons[0] || 'Verified');
+    scoreSpan.title = 'ThreatLens AI Score: ' + score + '/100 (' + analysis.threatLevel + ')';
     scoreSpan.textContent = ' [' + score + ']';
 
     if (senderEl.parentNode) {
@@ -210,11 +217,11 @@
   }
 
   /**
-   * Scan entire visible Gmail DOM
+   * Comprehensive DOM Scan
    */
   function scanGmail() {
-    // 1. Scan Inbox Rows
-    const rows = document.querySelectorAll('tr.zA, tr.zE, tr.yO, [role="row"]');
+    // 1. Scan Inbox Rows (All table rows in Gmail list)
+    const rows = document.querySelectorAll('tr.zA, tr.zE, tr.yO, [role="row"], table tbody tr');
     for (let i = 0; i < rows.length; i++) {
       injectBadgeIntoInboxRow(rows[i]);
     }
@@ -226,19 +233,21 @@
     }
   }
 
-  // MutationObserver for continuous instant updates as you scroll
+  // MutationObserver for continuous instant scanning as emails arrive or user scrolls
   const observer = new MutationObserver(function(mutations) {
-    let shouldScan = false;
-    for (let i = 0; i < mutations.length; i++) {
-      if (mutations[i].addedNodes.length > 0) {
-        shouldScan = true;
-        break;
-      }
-    }
-    if (shouldScan) scanGmail();
+    scanGmail();
   });
 
   observer.observe(document.body, { childList: true, subtree: true });
-  setTimeout(scanGmail, 800);
-  setInterval(scanGmail, 1500);
+
+  // Immediate and continuous scanning intervals
+  scanGmail();
+  setTimeout(scanGmail, 500);
+  setTimeout(scanGmail, 1200);
+  setInterval(scanGmail, 800);
+
+  // Hook navigation and scroll events
+  window.addEventListener('scroll', scanGmail, { passive: true });
+  window.addEventListener('hashchange', scanGmail);
+  window.addEventListener('popstate', scanGmail);
 })();

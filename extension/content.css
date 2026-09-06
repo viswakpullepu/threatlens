@@ -1,13 +1,12 @@
 
 /* ============================================================
    ThreatLens AI — Minimalist In-Mailbox Colored Score Numbers
-   (Zero backgrounds, Zero pills, Pure colored numbers)
    ============================================================ */
 
 .threatlens-number-badge {
   display: inline-block !important;
   margin-left: 5px !important;
-  margin-right: 3px !important;
+  margin-right: 4px !important;
   padding: 0 !important;
   background: transparent !important;
   border: none !important;
@@ -21,10 +20,11 @@
   cursor: pointer !important;
   user-select: none !important;
   transition: opacity 0.15s ease !important;
+  flex-shrink: 0 !important;
 }
 
 .threatlens-number-badge:hover {
-  opacity: 0.8 !important;
+  opacity: 0.75 !important;
 }
 
 /* Critical (>80): Bold Crimson Red */
