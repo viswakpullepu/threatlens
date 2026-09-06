@@ -75,10 +75,23 @@ export const ForensicsView: React.FC = () => {
     } catch (_) {}
   };
 
-  // Sync with persistent backend database on load + check url params
+  // Sync with persistent backend database on load + check url params + listen for live intercept events
   useEffect(() => {
     refreshEmailsFromBackend();
     checkOAuthStatus();
+
+    const handleRealtimeUpdate = (e: any) => {
+      if (e.detail?.emails) {
+        setCustomEmails(e.detail.emails);
+        if (e.detail.newEmails && e.detail.newEmails[0]) {
+          setSelectedEmail(e.detail.newEmails[0]);
+          setSyncMessage(`⚡ [Live Ingest] Intercepted & analyzed "${e.detail.newEmails[0].metadata?.subject || 'New Email'}"`);
+          setTimeout(() => setSyncMessage(null), 5000);
+        }
+      }
+    };
+
+    window.addEventListener('threatlens_emails_updated', handleRealtimeUpdate);
 
     // Check if returned from OAuth redirect
     const params = new URLSearchParams(window.location.search);
@@ -91,6 +104,10 @@ export const ForensicsView: React.FC = () => {
       checkOAuthStatus();
       setTimeout(() => setSyncMessage(null), 6000);
     }
+
+    return () => {
+      window.removeEventListener('threatlens_emails_updated', handleRealtimeUpdate);
+    };
   }, []);
 
   const handleSyncGmail = async () => {

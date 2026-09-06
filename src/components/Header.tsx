@@ -48,12 +48,13 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="font-extrabold text-base tracking-tight text-slate-950">
                   ThreatLens <span className="text-indigo-600 font-black">AI</span>
                 </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                  ● AI ENGINE ACTIVE
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  LIVE RADAR ACTIVE
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 hidden sm:block">
-                AI-Powered Threat Detection, Geolocation & Forensic Intelligence
+                Real-Time Multi-Vector Threat Defense & Automated Inbound Mailbox Guard
               </p>
             </div>
           </div>

@@ -157,7 +157,7 @@ async function fetchGoogleUserProfile(accessToken) {
   return null;
 }
 
-async function syncGmailInbox(accessToken, limit = 10) {
+async function syncGmailInbox(accessToken, limit = 15) {
   try {
     // 1. Fetch message IDs from user's primary inbox
     const listRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${limit}&q=in:inbox`, {
@@ -173,9 +173,18 @@ async function syncGmailInbox(accessToken, limit = 10) {
     const listData = await listRes.json();
     if (!listData.messages || !Array.isArray(listData.messages)) return [];
 
-    const synced = [];
+    const newlyAnalyzed = [];
     for (const item of listData.messages) {
       try {
+        // Check if message was already analyzed
+        const existing = analyzedEmails.find(e => 
+          e.id === item.id || 
+          e.id === `gmail_${item.id}` || 
+          e.id === `gmail_live_${item.id}.eml` || 
+          (e.metadata && e.metadata.messageId && e.metadata.messageId.includes(item.id))
+        );
+        if (existing) continue;
+
         const msgRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${item.id}?format=raw`, {
           headers: { Authorization: `Bearer ${accessToken}` }
         });
@@ -183,15 +192,17 @@ async function syncGmailInbox(accessToken, limit = 10) {
           const msgData = await msgRes.json();
           if (msgData.raw) {
             const rawText = Buffer.from(msgData.raw, 'base64url').toString('utf8');
-            const analysis = await analyzeEmail(rawText, `gmail_live_${item.id}.eml`);
-            synced.push(analysis);
+            const analysis = await analyzeEmail(rawText, `gmail_${item.id}.eml`);
+            analysis.id = item.id;
+            analysis.source = 'gmail_oauth_live';
+            newlyAnalyzed.push(analysis);
           }
         }
       } catch (e) {
         console.error(`[Gmail Sync Error for ${item.id}]:`, e.message);
       }
     }
-    return synced;
+    return newlyAnalyzed;
   } catch (err) {
     console.error('[Gmail Sync Error]:', err.message);
     return [];
@@ -930,9 +941,16 @@ export async function handleRequest(req, res) {
     }
 
     try {
-      const synced = await syncGmailInbox(googleTokens.access_token, 15);
+      const newItems = await syncGmailInbox(googleTokens.access_token, 15);
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: true, count: synced.length, user: connectedUser }));
+      res.end(JSON.stringify({ 
+        success: true, 
+        count: analyzedEmails.length,
+        newCount: newItems.length,
+        newEmails: newItems,
+        emails: analyzedEmails,
+        user: connectedUser 
+      }));
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: false, error: err.message }));

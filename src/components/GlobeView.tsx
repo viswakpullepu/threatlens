@@ -92,7 +92,7 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
     }
   });
 
-  // Sync with persistent backend database on mount
+  // Sync with persistent backend database on mount & listen for live telemetry broadcasts
   useEffect(() => {
     fetch('/api/emails')
       .then(res => res.json())
@@ -109,6 +109,15 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
         }
       })
       .catch(() => {});
+
+    const handleRealtimeUpdate = (e: any) => {
+      if (e.detail?.emails) {
+        setCustomEmails(e.detail.emails);
+      }
+    };
+
+    window.addEventListener('threatlens_emails_updated', handleRealtimeUpdate);
+    return () => window.removeEventListener('threatlens_emails_updated', handleRealtimeUpdate);
   }, []);
 
   // Map real analyzed emails directly to 3D spherical coordinates
