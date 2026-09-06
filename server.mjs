@@ -71,13 +71,23 @@ function persistEmail(email) {
   }
 }
 
-// ----------------------------------------------------
-// Google OAuth & Gmail Live Ingestion Helpers
-// ----------------------------------------------------
-function getGoogleAuthUrl() {
+function getDynamicRedirectUri(req) {
+  if (process.env.GOOGLE_REDIRECT_URI) return process.env.GOOGLE_REDIRECT_URI;
+  if (req && req.headers && req.headers.host) {
+    const host = req.headers.host;
+    if (host.includes('vercel.app') || (!host.includes('localhost') && !host.includes('127.0.0.1'))) {
+      const proto = req.headers['x-forwarded-proto'] || 'https';
+      return `${proto}://${host}/api/auth/google/callback`;
+    }
+  }
+  return GOOGLE_REDIRECT_URI;
+}
+
+function getGoogleAuthUrl(req) {
   const rootUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
+  const redirectUri = getDynamicRedirectUri(req);
   const options = {
-    redirect_uri: GOOGLE_REDIRECT_URI,
+    redirect_uri: redirectUri,
     client_id: GOOGLE_CLIENT_ID,
     access_type: 'offline',
     response_type: 'code',
@@ -91,13 +101,14 @@ function getGoogleAuthUrl() {
   return `${rootUrl}?${new URLSearchParams(options).toString()}`;
 }
 
-async function exchangeGoogleCodeForTokens(code) {
+async function exchangeGoogleCodeForTokens(code, req) {
   const url = 'https://oauth2.googleapis.com/token';
+  const redirectUri = getDynamicRedirectUri(req);
   const values = {
     code,
     client_id: GOOGLE_CLIENT_ID,
     client_secret: GOOGLE_CLIENT_SECRET,
-    redirect_uri: GOOGLE_REDIRECT_URI,
+    redirect_uri: redirectUri,
     grant_type: 'authorization_code'
   };
 
@@ -831,13 +842,20 @@ const server = http.createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
+export async function handleRequest(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
     res.end();
     return;
   }
 
-  const url = new URL(req.url, `http://${req.headers.host}`);
+  const host = req.headers.host || `localhost:${PORT}`;
+  const proto = req.headers['x-forwarded-proto'] || 'http';
+  const url = new URL(req.url, `${proto}://${host}`);
 
   if (req.method === 'GET' && url.pathname === '/api/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -855,7 +873,7 @@ const server = http.createServer(async (req, res) => {
   // GOOGLE OAUTH & GMAIL LIVE INGESTION ROUTES
   // ==========================================
   if (req.method === 'GET' && url.pathname === '/api/auth/google/login') {
-    const authUrl = getGoogleAuthUrl();
+    const authUrl = getGoogleAuthUrl(req);
     res.writeHead(302, { Location: authUrl });
     res.end();
     return;
@@ -864,15 +882,16 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && url.pathname === '/api/auth/google/callback') {
     const code = url.searchParams.get('code');
     const error = url.searchParams.get('error');
+    const returnBase = `${proto}://${host}`;
 
     if (error || !code) {
-      res.writeHead(302, { Location: `http://localhost:3000/?oauth_error=${encodeURIComponent(error || 'missing_code')}` });
+      res.writeHead(302, { Location: `${returnBase}/?oauth_error=${encodeURIComponent(error || 'missing_code')}` });
       res.end();
       return;
     }
 
     try {
-      const tokens = await exchangeGoogleCodeForTokens(code);
+      const tokens = await exchangeGoogleCodeForTokens(code, req);
       if (tokens.access_token) {
         const userProfile = await fetchGoogleUserProfile(tokens.access_token);
         saveOAuthState(tokens, userProfile);
@@ -881,7 +900,7 @@ const server = http.createServer(async (req, res) => {
         const synced = await syncGmailInbox(tokens.access_token, 15);
         console.log(`[ThreatLens OAuth] Successfully connected ${userProfile?.email || 'Gmail'}. Ingested and analyzed ${synced.length} emails.`);
 
-        res.writeHead(302, { Location: `http://localhost:3000/?connected=gmail&user=${encodeURIComponent(userProfile?.email || '')}&count=${synced.length}` });
+        res.writeHead(302, { Location: `${returnBase}/?connected=gmail&user=${encodeURIComponent(userProfile?.email || '')}&count=${synced.length}` });
         res.end();
         return;
       } else {
@@ -889,7 +908,7 @@ const server = http.createServer(async (req, res) => {
       }
     } catch (err) {
       console.error('[ThreatLens OAuth Callback Error]:', err.message);
-      res.writeHead(302, { Location: `http://localhost:3000/?oauth_error=${encodeURIComponent(err.message)}` });
+      res.writeHead(302, { Location: `${returnBase}/?oauth_error=${encodeURIComponent(err.message)}` });
       res.end();
       return;
     }
@@ -966,8 +985,15 @@ const server = http.createServer(async (req, res) => {
 
   res.writeHead(404, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({ error: 'Endpoint not found' }));
-});
+}
 
-server.listen(PORT, () => {
-  console.log(`[ThreatLens Persistent Forensic Backend] Running on http://localhost:${PORT}`);
-});
+// HTTP Server instance
+const server = http.createServer(handleRequest);
+
+if (process.env.VERCEL !== '1') {
+  server.listen(PORT, () => {
+    console.log(`[ThreatLens Persistent Forensic Backend] Running on http://localhost:${PORT}`);
+  });
+}
+
+export default handleRequest;
