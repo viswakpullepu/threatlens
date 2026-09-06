@@ -992,7 +992,8 @@ export async function handleRequest(req, res) {
 // HTTP Server instance
 const server = http.createServer(handleRequest);
 
-if (process.env.VERCEL !== '1') {
+const isServerless = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NOW_REGION);
+if (!isServerless) {
   server.listen(PORT, () => {
     console.log(`[ThreatLens Persistent Forensic Backend] Running on http://localhost:${PORT}`);
   });
