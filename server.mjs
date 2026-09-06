@@ -5,16 +5,17 @@ import fs from 'fs';
 import path from 'path';
 
 const PORT = process.env.PORT || 3001;
-const DB_PATH = path.resolve('./src/data/emails_db.json');
+const isVercel = !!process.env.VERCEL;
+const DB_PATH = isVercel ? '/tmp/emails_db.json' : path.resolve('./src/data/emails_db.json');
+const OAUTH_PATH = isVercel ? '/tmp/oauth_tokens.json' : path.resolve('./src/data/oauth_tokens.json');
+const OAUTH_CONFIG_PATH = path.resolve('./src/data/oauth_config.json');
 
 // In-memory cache + persistent disk DB
 let analyzedEmails = [];
-const OAUTH_PATH = path.resolve('./src/data/oauth_tokens.json');
-const OAUTH_CONFIG_PATH = path.resolve('./src/data/oauth_config.json');
 let googleTokens = null;
 let connectedUser = null;
 
-// Read config from disk or environment (gitignored)
+// Read config from disk or environment
 let oauthConfig = {};
 try {
   if (fs.existsSync(OAUTH_CONFIG_PATH)) {
@@ -27,7 +28,7 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || oauthConfig.GOOGLE_CLIE
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || oauthConfig.GOOGLE_CLIENT_SECRET || '';
 const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || oauthConfig.GOOGLE_REDIRECT_URI || 'http://localhost:3001/api/auth/google/callback';
 
-// Load persistent tokens from disk
+// Load persistent tokens safely
 try {
   if (fs.existsSync(OAUTH_PATH)) {
     const oData = JSON.parse(fs.readFileSync(OAUTH_PATH, 'utf8'));
@@ -40,35 +41,35 @@ function saveOAuthState(tokens, user) {
   googleTokens = tokens;
   if (user) connectedUser = user;
   try {
-    fs.mkdirSync(path.dirname(OAUTH_PATH), { recursive: true });
+    const dir = path.dirname(OAUTH_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(OAUTH_PATH, JSON.stringify({ tokens: googleTokens, user: connectedUser, lastSynced: new Date().toISOString() }, null, 2), 'utf8');
   } catch (err) {
-    console.error('[ThreatLens OAuth] Failed to write tokens to disk:', err.message);
+    console.warn('[ThreatLens OAuth] Token memory persistence only:', err.message);
   }
 }
 
-// Load persistent emails from database
+// Load persistent emails safely
 try {
   if (fs.existsSync(DB_PATH)) {
     const data = fs.readFileSync(DB_PATH, 'utf8');
     analyzedEmails = JSON.parse(data);
-    console.log(`[ThreatLens DB] Loaded ${analyzedEmails.length} persistent emails from ${DB_PATH}`);
-  } else {
-    fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+  } else if (!isVercel) {
+    const dir = path.dirname(DB_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(DB_PATH, JSON.stringify([], null, 2), 'utf8');
   }
 } catch (err) {
-  console.error('[ThreatLens DB] Error initializing storage:', err.message);
   analyzedEmails = [];
 }
 
 function persistEmail(email) {
   try {
     analyzedEmails = [email, ...analyzedEmails.filter(e => e.id !== email.id)].slice(0, 100);
+    const dir = path.dirname(DB_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(DB_PATH, JSON.stringify(analyzedEmails, null, 2), 'utf8');
-  } catch (err) {
-    console.error('[ThreatLens DB] Failed to write email to disk:', err.message);
-  }
+  } catch (_) {}
 }
 
 function getDynamicRedirectUri(req) {
@@ -856,14 +857,15 @@ export async function handleRequest(req, res) {
   const host = req.headers.host || `localhost:${PORT}`;
   const proto = req.headers['x-forwarded-proto'] || 'http';
   const url = new URL(req.url, `${proto}://${host}`);
+  const pathname = url.pathname.startsWith('/api') ? url.pathname : `/api${url.pathname === '/' ? '' : url.pathname}`;
 
-  if (req.method === 'GET' && url.pathname === '/api/health') {
+  if (req.method === 'GET' && (pathname === '/api/health' || pathname === '/api/')) {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ status: 'ONLINE', service: 'ThreatLens Persistent Forensic Engine', port: PORT, count: analyzedEmails.length }));
     return;
   }
 
-  if (req.method === 'GET' && url.pathname === '/api/emails') {
+  if (req.method === 'GET' && pathname === '/api/emails') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ emails: analyzedEmails }));
     return;
@@ -872,14 +874,14 @@ export async function handleRequest(req, res) {
   // ==========================================
   // GOOGLE OAUTH & GMAIL LIVE INGESTION ROUTES
   // ==========================================
-  if (req.method === 'GET' && url.pathname === '/api/auth/google/login') {
+  if (req.method === 'GET' && pathname === '/api/auth/google/login') {
     const authUrl = getGoogleAuthUrl(req);
     res.writeHead(302, { Location: authUrl });
     res.end();
     return;
   }
 
-  if (req.method === 'GET' && url.pathname === '/api/auth/google/callback') {
+  if (req.method === 'GET' && pathname === '/api/auth/google/callback') {
     const code = url.searchParams.get('code');
     const error = url.searchParams.get('error');
     const returnBase = `${proto}://${host}`;
@@ -914,7 +916,7 @@ export async function handleRequest(req, res) {
     }
   }
 
-  if (req.method === 'GET' && url.pathname === '/api/auth/status') {
+  if (req.method === 'GET' && pathname === '/api/auth/status') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       connected: !!(googleTokens && googleTokens.access_token),
@@ -925,7 +927,7 @@ export async function handleRequest(req, res) {
     return;
   }
 
-  if (req.method === 'POST' && url.pathname === '/api/auth/google/sync') {
+  if (req.method === 'POST' && pathname === '/api/auth/google/sync') {
     if (!googleTokens?.access_token) {
       res.writeHead(401, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: false, error: 'No Gmail account connected via OAuth' }));
@@ -943,7 +945,7 @@ export async function handleRequest(req, res) {
     return;
   }
 
-  if (req.method === 'POST' && url.pathname === '/api/auth/disconnect') {
+  if (req.method === 'POST' && pathname === '/api/auth/disconnect') {
     googleTokens = null;
     connectedUser = null;
     try {
@@ -954,7 +956,7 @@ export async function handleRequest(req, res) {
     return;
   }
 
-  if (req.method === 'POST' && (url.pathname === '/api/analyze-email' || url.pathname === '/api/webhook/email')) {
+  if (req.method === 'POST' && (pathname === '/api/analyze-email' || pathname === '/api/webhook/email')) {
     let body = '';
     req.on('data', chunk => { body += chunk; });
     req.on('end', async () => {
