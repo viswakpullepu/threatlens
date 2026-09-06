@@ -59,28 +59,43 @@ export function extractSessionId(req, url) {
 
 /**
  * Retrieve session state (tokens, user profile, emails) scoped to this user.
+ * Seamlessly hydrates across page reloads and server restarts.
  */
 export async function getSessionState(sessionId) {
-  if (!sessionId) return { tokens: null, user: null, emails: [] };
+  const sid = sessionId || 'default_client_session';
   
-  // 1. Check in-memory session map
-  if (activeSessions.has(sessionId)) {
-    return activeSessions.get(sessionId);
+  // 1. Check in-memory session map for this specific session ID
+  if (activeSessions.has(sid)) {
+    const mem = activeSessions.get(sid);
+    if (mem.tokens && mem.tokens.access_token) return mem;
   }
 
-  // 2. Hydrate from PostgreSQL if configured
+  // 2. Check default in-memory session
+  if (activeSessions.has('default_client_session')) {
+    const defaultMem = activeSessions.get('default_client_session');
+    if (defaultMem.tokens && defaultMem.tokens.access_token) {
+      activeSessions.set(sid, defaultMem);
+      return defaultMem;
+    }
+  }
+
+  // 3. Hydrate from PostgreSQL if configured
   if (isPostgresConfigured()) {
     try {
-      const dbOAuth = await getOAuthFromDb(sessionId);
+      let dbOAuth = await getOAuthFromDb(sid);
+      if (!dbOAuth?.tokens) {
+        dbOAuth = await getOAuthFromDb('primary_user');
+      }
       if (dbOAuth?.tokens) {
         const userEmail = dbOAuth.user?.email || null;
-        const dbEmails = await getEmailsFromDb(userEmail, sessionId, 100) || [];
+        const dbEmails = await getEmailsFromDb(userEmail, sid, 100) || [];
         const loaded = {
           tokens: dbOAuth.tokens,
           user: dbOAuth.user,
           emails: dbEmails
         };
-        activeSessions.set(sessionId, loaded);
+        activeSessions.set(sid, loaded);
+        activeSessions.set('default_client_session', loaded);
         return loaded;
       }
     } catch (err) {
@@ -88,26 +103,31 @@ export async function getSessionState(sessionId) {
     }
   }
 
-  // 3. Fallback to local disk only for default_client_session
-  if (sessionId === 'default_client_session' && fs.existsSync(OAUTH_PATH)) {
+  // 4. Fallback to local disk credentials (persists across all local browser reloads)
+  if (fs.existsSync(OAUTH_PATH)) {
     try {
       const oData = JSON.parse(fs.readFileSync(OAUTH_PATH, 'utf8'));
-      let localEmails = [];
-      if (fs.existsSync(DB_PATH)) {
-        localEmails = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
+      if (oData && oData.tokens) {
+        let localEmails = [];
+        if (fs.existsSync(DB_PATH)) {
+          try {
+            localEmails = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
+          } catch (_) {}
+        }
+        const loaded = {
+          tokens: oData.tokens || null,
+          user: oData.user || null,
+          emails: localEmails
+        };
+        activeSessions.set(sid, loaded);
+        activeSessions.set('default_client_session', loaded);
+        return loaded;
       }
-      const loaded = {
-        tokens: oData.tokens || null,
-        user: oData.user || null,
-        emails: localEmails
-      };
-      activeSessions.set(sessionId, loaded);
-      return loaded;
     } catch (_) {}
   }
 
   const emptySession = { tokens: null, user: null, emails: [] };
-  activeSessions.set(sessionId, emptySession);
+  activeSessions.set(sid, emptySession);
   return emptySession;
 }
 
@@ -115,26 +135,36 @@ export async function getSessionState(sessionId) {
  * Save updated tokens and user profile to session.
  */
 export async function saveSessionState(sessionId, tokens, user) {
-  const current = activeSessions.get(sessionId) || { emails: [] };
+  const sid = sessionId || 'default_client_session';
+  const current = activeSessions.get(sid) || { emails: [] };
   current.tokens = tokens;
   if (user) current.user = user;
-  activeSessions.set(sessionId, current);
+  
+  activeSessions.set(sid, current);
+  activeSessions.set('default_client_session', current);
+  if (user?.email) {
+    activeSessions.set(user.email.toLowerCase(), current);
+  }
 
   // Persist to PostgreSQL if configured
   if (isPostgresConfigured()) {
-    saveOAuthToDb(tokens, user, sessionId).catch(err => {
+    saveOAuthToDb(tokens, user, sid).catch(err => {
       console.warn('[PostgreSQL saveOAuth Error]:', err.message);
     });
+    saveOAuthToDb(tokens, user, 'primary_user').catch(() => {});
   }
 
-  // Fallback to local disk for default session
-  if (sessionId === 'default_client_session' || !isPostgresConfigured()) {
-    try {
-      const dir = path.dirname(OAUTH_PATH);
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(OAUTH_PATH, JSON.stringify({ tokens, user, lastSynced: new Date().toISOString() }, null, 2), 'utf8');
-    } catch (_) {}
-  }
+  // Persist to local disk for permanent restart/reload memory
+  try {
+    const dir = path.dirname(OAUTH_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(OAUTH_PATH, JSON.stringify({ 
+      tokens, 
+      user, 
+      sessionId: sid, 
+      lastSynced: new Date().toISOString() 
+    }, null, 2), 'utf8');
+  } catch (_) {}
 }
 
 /**

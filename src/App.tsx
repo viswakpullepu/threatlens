@@ -4,8 +4,9 @@ import { GlobeView } from './components/GlobeView';
 import { ForensicsView } from './components/ForensicsView';
 import { ThreatIntelligenceView } from './components/ThreatIntelligenceView';
 import { LiveEmailInterceptor } from './components/LiveEmailInterceptor';
+import { AuthProvider } from './context/AuthContext';
 
-export const App: React.FC = () => {
+export const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
 
   const handleSelectEmailForForensics = (email: any) => {
@@ -62,3 +63,12 @@ export const App: React.FC = () => {
     </div>
   );
 };
+
+export const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+};
+

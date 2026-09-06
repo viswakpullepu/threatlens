@@ -36,10 +36,12 @@ import {
 import { ForensicReportModal } from './ForensicReportModal';
 import { parseEmailForensics } from '../engine/emailParser';
 import { getOrCreateSessionId } from './LiveEmailInterceptor';
+import { useAuth } from '../context/AuthContext';
 
 const BASE_STORAGE_KEY = 'threatlens_custom_emails_db';
 
 export const ForensicsView: React.FC = () => {
+  const { user: authUser, isAuthenticated, loginWithGoogle, logout: authLogout, refreshAuth } = useAuth();
   const sessionId = getOrCreateSessionId();
   const STORAGE_KEY = `${BASE_STORAGE_KEY}_${sessionId}`;
 
@@ -56,7 +58,9 @@ export const ForensicsView: React.FC = () => {
   const [isRawModalOpen, setIsRawModalOpen] = useState(false);
   const [rawEmailText, setRawEmailText] = useState('');
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-  const [oauthStatus, setOauthStatus] = useState<{ connected: boolean; user?: any; provider?: string } | null>(null);
+  const [oauthStatus, setOauthStatus] = useState<{ connected: boolean; user?: any; provider?: string } | null>(() => {
+    return authUser ? { connected: true, user: authUser, provider: 'gmail' } : null;
+  });
   const [isSyncing, setIsSyncing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [nextPageToken, setNextPageToken] = useState<string | null>(null);
@@ -367,11 +371,11 @@ export const ForensicsView: React.FC = () => {
 
           <div className="flex flex-wrap items-center gap-2">
             {/* Live OAuth Connector */}
-            {oauthStatus?.connected ? (
+            {(isAuthenticated && authUser) || oauthStatus?.connected ? (
               <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-1.5 shadow-2xs">
                 <div className="flex items-center gap-1.5 text-xs text-emerald-800 font-bold">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="max-w-[140px] truncate">{oauthStatus.user?.email || 'Gmail Connected'}</span>
+                  <span className="max-w-[140px] truncate">{authUser?.email || oauthStatus?.user?.email || 'Gmail Connected'}</span>
                 </div>
                 <button
                   onClick={handleSyncGmail}
@@ -390,14 +394,19 @@ export const ForensicsView: React.FC = () => {
                 </button>
               </div>
             ) : (
-              <a 
-                href={`/api/auth/google/login?session_id=${encodeURIComponent(sessionId)}`}
+              <button 
+                onClick={loginWithGoogle}
                 className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer"
-                title="Connect Gmail inbox via OAuth2 (No passwords stored)"
+                title="Connect Gmail inbox via OAuth 2.0 (No passwords stored)"
               >
-                <img src="https://www.google.com/favicon.ico" className="w-3.5 h-3.5 rounded-full" alt="Google" />
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>
+                  <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.34 24 12 24z"/>
+                  <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 10.04 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
+                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+                </svg>
                 <span>Connect Live Gmail</span>
-              </a>
+              </button>
             )}
 
             <button 
