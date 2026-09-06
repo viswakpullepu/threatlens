@@ -30,7 +30,8 @@ import {
   Layers,
   Inbox,
   Sparkles,
-  ChevronRight
+  ChevronRight,
+  Zap
 } from 'lucide-react';
 import { ForensicReportModal } from './ForensicReportModal';
 import { parseEmailForensics } from '../engine/emailParser';
@@ -128,6 +129,8 @@ export const ForensicsView: React.FC = () => {
     };
   }, []);
 
+  const [isSyncingAll, setIsSyncingAll] = useState(false);
+
   const handleSyncGmail = async () => {
     setIsSyncing(true);
     try {
@@ -152,7 +155,7 @@ export const ForensicsView: React.FC = () => {
   };
 
   const handleLoadMoreGmail = async () => {
-    if (isLoadingMore || isSyncing) return;
+    if (isLoadingMore || isSyncing || isSyncingAll) return;
     setIsLoadingMore(true);
     try {
       const sid = getOrCreateSessionId();
@@ -170,7 +173,11 @@ export const ForensicsView: React.FC = () => {
           setCustomEmails(data.emails);
           try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data.emails)); } catch (_) {}
         }
-        setSyncMessage(`📥 Ingested ${data.newCount || 0} more emails. Total: ${(data.emails || []).length}`);
+        if (data.newCount > 0) {
+          setSyncMessage(`📥 Ingested ${data.newCount} additional emails. Total visible: ${(data.emails || []).length}`);
+        } else if (!data.nextPageToken) {
+          setSyncMessage(`✓ Reached beginning of mailbox (${(data.emails || []).length} total emails)`);
+        }
       } else {
         setSyncMessage(data.error || 'All accessible messages ingested.');
       }
@@ -178,13 +185,51 @@ export const ForensicsView: React.FC = () => {
       setSyncMessage('⚠️ Error fetching more messages');
     }
     setIsLoadingMore(false);
+    setTimeout(() => setSyncMessage(null), 4000);
+  };
+
+  // 1-Click Fast Ingestion of All Available Historical Pages
+  const handleSyncAllGmail = async () => {
+    if (isSyncingAll || isSyncing || isLoadingMore) return;
+    setIsSyncingAll(true);
+    let currentToken = nextPageToken;
+    let keepPaging = true;
+    let cycles = 0;
+    const sid = getOrCreateSessionId();
+
+    try {
+      while (keepPaging && cycles < 25) {
+        cycles++;
+        let url = `/api/auth/google/sync?session_id=${encodeURIComponent(sid)}&limit=50`;
+        if (currentToken) url += `&pageToken=${encodeURIComponent(currentToken)}`;
+
+        const res = await fetch(url, { method: 'POST', headers: { 'x-session-id': sid } });
+        const data = await res.json();
+        if (data.success) {
+          currentToken = data.nextPageToken || null;
+          setNextPageToken(currentToken);
+          if (data.emails && Array.isArray(data.emails)) {
+            setCustomEmails(data.emails);
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data.emails)); } catch (_) {}
+          }
+          setSyncMessage(`⚡ Fast Mailbox Sync: Ingested ${(data.emails || []).length} total emails (Batch ${cycles})...`);
+          if (!currentToken) {
+            keepPaging = false;
+            setSyncMessage(`✅ Fully Ingested All ${(data.emails || []).length} Mailbox Messages!`);
+          }
+        } else {
+          keepPaging = false;
+        }
+      }
+    } catch (_) {}
+    setIsSyncingAll(false);
     setTimeout(() => setSyncMessage(null), 5000);
   };
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const target = e.currentTarget;
-    if (target.scrollHeight - target.scrollTop - target.clientHeight < 60) {
-      if (oauthStatus?.connected && !isSyncing && !isLoadingMore && nextPageToken) {
+    if (target.scrollHeight - target.scrollTop - target.clientHeight < 180) {
+      if (oauthStatus?.connected && !isSyncing && !isLoadingMore && !isSyncingAll && nextPageToken) {
         handleLoadMoreGmail();
       }
     }
@@ -452,15 +497,26 @@ export const ForensicsView: React.FC = () => {
                 </button>
 
                 {oauthStatus?.connected && (
-                  <button
-                    onClick={handleLoadMoreGmail}
-                    disabled={isLoadingMore || isSyncing}
-                    className="ml-auto sm:ml-2 px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl border border-indigo-200 transition-all flex items-center gap-1.5 cursor-pointer"
-                    title="Load more historical emails from your Gmail inbox"
-                  >
-                    <RefreshCw className={`w-3 h-3 ${isLoadingMore || isSyncing ? 'animate-spin' : ''}`} />
-                    <span>{isLoadingMore ? 'Fetching...' : 'Fetch More'}</span>
-                  </button>
+                  <div className="ml-auto flex items-center gap-1.5">
+                    <button
+                      onClick={handleLoadMoreGmail}
+                      disabled={isLoadingMore || isSyncing || isSyncingAll}
+                      className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl border border-indigo-200 transition-all flex items-center gap-1 cursor-pointer"
+                      title="Load next batch of 50 emails from Gmail"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${isLoadingMore ? 'animate-spin' : ''}`} />
+                      <span>{isLoadingMore ? 'Fetching...' : 'Load +50'}</span>
+                    </button>
+                    <button
+                      onClick={handleSyncAllGmail}
+                      disabled={isLoadingMore || isSyncing || isSyncingAll}
+                      className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1 cursor-pointer"
+                      title="Automatically fetch all historical emails in your Gmail inbox"
+                    >
+                      <Zap className={`w-3 h-3 ${isSyncingAll ? 'animate-spin text-amber-300' : ''}`} />
+                      <span>{isSyncingAll ? 'Syncing All...' : 'Sync Entire Mailbox'}</span>
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -531,25 +587,30 @@ export const ForensicsView: React.FC = () => {
 
               {/* In-feed status indicator & bottom fetch loader */}
               <div className="pt-3 pb-1 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
-                <span className="font-mono text-[11px]">
-                  Showing {filteredEmails.length} of {allEmails.length} indexed emails
-                </span>
-                {isLoadingMore ? (
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[11px] font-bold text-slate-700">
+                    Showing {filteredEmails.length} of {allEmails.length} visible mailbox emails
+                  </span>
+                  <span className="text-[10px] text-slate-400 hidden md:inline">
+                    (Threats: {criticalCount + mildCount} saved to database • Safe: {safeCount} live streamed)
+                  </span>
+                </div>
+                {isLoadingMore || isSyncingAll ? (
                   <div className="flex items-center gap-2 text-indigo-600 font-bold text-xs">
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Loading more emails from your mailbox...</span>
+                    <span>{isSyncingAll ? 'Turbo-syncing entire mailbox...' : 'Loading next 50 emails on scroll...'}</span>
                   </div>
                 ) : nextPageToken && oauthStatus?.connected ? (
                   <button
                     onClick={handleLoadMoreGmail}
                     className="text-indigo-600 hover:text-indigo-800 font-bold text-xs underline flex items-center gap-1 cursor-pointer"
                   >
-                    <span>Scroll down or click here to load more from Gmail</span>
+                    <span>Scroll down or click here to load next 50</span>
                     <ChevronRight className="w-3 h-3" />
                   </button>
                 ) : (
                   <span className="text-[11px] text-emerald-600 font-medium">
-                    ✓ All accessible mailbox items analyzed and visible
+                    ✓ All accessible mailbox emails indexed & visible
                   </span>
                 )}
               </div>

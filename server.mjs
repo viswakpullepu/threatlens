@@ -139,26 +139,32 @@ export async function saveSessionState(sessionId, tokens, user) {
 
 /**
  * Persist analyzed email scoped to user/session.
+ * - Live UI Stream / Memory: displays ALL emails (safe + non-safe).
+ * - Persistent DB / Threat History: ONLY records non-safe threats (Score >= 50).
  */
 export async function persistEmail(email, sessionId = 'default_client_session', ownerEmail = null) {
   const current = activeSessions.get(sessionId) || { tokens: null, user: null, emails: [] };
-  current.emails = [email, ...current.emails.filter(e => e.id !== email.id)].slice(0, 1000);
+  
+  // Keep all emails in active session memory/stream for display (up to 2500 emails)
+  current.emails = [email, ...current.emails.filter(e => e.id !== email.id)].slice(0, 2500);
   activeSessions.set(sessionId, current);
 
   const finalOwner = ownerEmail || current.user?.email || null;
+  const isNonSafeThreat = (email.threatScore || 0) >= 50;
 
-  // Persist to PostgreSQL with multi-tenant scoping
-  if (isPostgresConfigured()) {
+  // ONLY persist non-safe threats (Score >= 50: Critical & Mild threats) to persistent PostgreSQL threat history
+  if (isNonSafeThreat && isPostgresConfigured()) {
     saveEmailToDb(email, finalOwner, sessionId).catch(err => {
       console.warn('[PostgreSQL saveEmail Error]:', err.message);
     });
   }
 
-  // Fallback local store
+  // Fallback local store (save threats only)
   try {
     const dir = path.dirname(DB_PATH);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(DB_PATH, JSON.stringify(current.emails, null, 2), 'utf8');
+    const threatOnlyList = current.emails.filter(e => (e.threatScore || 0) >= 50);
+    fs.writeFileSync(DB_PATH, JSON.stringify(threatOnlyList, null, 2), 'utf8');
   } catch (_) {}
 }
 
@@ -318,9 +324,9 @@ export async function sendSecurityAlertEmail(accessToken, userEmail, email) {
 }
 
 /**
- * Fast parallel Gmail sync with multi-user scoping and automated high-threat warning dispatch.
+ * Fast parallel Gmail sync with continuous pagination across entire mailbox.
  */
-export async function syncGmailInbox(accessToken, sessionId = 'default_client_session', userEmail = null, limit = 50, pageToken = null) {
+export async function syncGmailInbox(accessToken, sessionId = 'default_client_session', userEmail = null, limit = 50, pageToken = null, depth = 0) {
   try {
     const session = await getSessionState(sessionId);
     const existingEmails = session.emails || [];
@@ -335,7 +341,7 @@ export async function syncGmailInbox(accessToken, sessionId = 'default_client_se
     
     if (listRes.status === 401) {
       const refreshedToken = await refreshGoogleAccessToken(session);
-      if (refreshedToken) return syncGmailInbox(refreshedToken, sessionId, userEmail, limit, pageToken);
+      if (refreshedToken) return syncGmailInbox(refreshedToken, sessionId, userEmail, limit, pageToken, depth);
       const emptyRes = [];
       emptyRes.nextPageToken = null;
       return emptyRes;
@@ -359,6 +365,11 @@ export async function syncGmailInbox(accessToken, sessionId = 'default_client_se
         (e.metadata?.messageId && e.metadata.messageId.includes(item.id))
       );
     });
+
+    // If current page contains only seen items and there is a next page, auto-advance to next page!
+    if (unseenItems.length === 0 && nextPageToken && depth < 5) {
+      return syncGmailInbox(accessToken, sessionId, userEmail, limit, nextPageToken, depth + 1);
+    }
 
     if (unseenItems.length === 0) {
       const noNew = [];
