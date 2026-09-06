@@ -3,6 +3,15 @@ import dns from 'dns/promises';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import { 
+  isPostgresConfigured, 
+  saveEmailToDb, 
+  getEmailsFromDb, 
+  saveOAuthToDb, 
+  getOAuthFromDb, 
+  clearOAuthFromDb, 
+  getDbHealth 
+} from './src/server/db.mjs';
 
 const PORT = process.env.PORT || 3001;
 const isVercel = !!process.env.VERCEL;
@@ -10,7 +19,7 @@ const DB_PATH = isVercel ? '/tmp/emails_db.json' : path.resolve('./src/data/emai
 const OAUTH_PATH = isVercel ? '/tmp/oauth_tokens.json' : path.resolve('./src/data/oauth_tokens.json');
 const OAUTH_CONFIG_PATH = path.resolve('./src/data/oauth_config.json');
 
-// In-memory cache + persistent disk DB
+// In-memory cache + persistent disk/db
 let analyzedEmails = [];
 let googleTokens = null;
 let connectedUser = null;
@@ -28,7 +37,7 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || oauthConfig.GOOGLE_CLIE
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || oauthConfig.GOOGLE_CLIENT_SECRET || '';
 const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || oauthConfig.GOOGLE_REDIRECT_URI || 'http://localhost:3001/api/auth/google/callback';
 
-// Load persistent tokens safely
+// Load initial persistent tokens from disk (fallback)
 try {
   if (fs.existsSync(OAUTH_PATH)) {
     const oData = JSON.parse(fs.readFileSync(OAUTH_PATH, 'utf8'));
@@ -37,19 +46,7 @@ try {
   }
 } catch (_) {}
 
-function saveOAuthState(tokens, user) {
-  googleTokens = tokens;
-  if (user) connectedUser = user;
-  try {
-    const dir = path.dirname(OAUTH_PATH);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(OAUTH_PATH, JSON.stringify({ tokens: googleTokens, user: connectedUser, lastSynced: new Date().toISOString() }, null, 2), 'utf8');
-  } catch (err) {
-    console.warn('[ThreatLens OAuth] Token memory persistence only:', err.message);
-  }
-}
-
-// Load persistent emails safely
+// Load initial persistent emails from disk (fallback)
 try {
   if (fs.existsSync(DB_PATH)) {
     const data = fs.readFileSync(DB_PATH, 'utf8');
@@ -63,9 +60,60 @@ try {
   analyzedEmails = [];
 }
 
-function persistEmail(email) {
+// Asynchronously hydrate from PostgreSQL if available
+(async () => {
+  if (isPostgresConfigured()) {
+    try {
+      const dbOAuth = await getOAuthFromDb('primary_user');
+      if (dbOAuth?.tokens) {
+        googleTokens = dbOAuth.tokens;
+        if (dbOAuth.user) connectedUser = dbOAuth.user;
+        console.log('[PostgreSQL] Loaded OAuth session for:', connectedUser?.email || 'authenticated user');
+      }
+      const dbEmails = await getEmailsFromDb(100);
+      if (Array.isArray(dbEmails) && dbEmails.length > 0) {
+        analyzedEmails = dbEmails;
+        console.log(`[PostgreSQL] Hydrated ${dbEmails.length} emails from PostgreSQL.`);
+      }
+    } catch (err) {
+      console.warn('[PostgreSQL Boot Hydration Warning]:', err.message);
+    }
+  }
+})();
+
+function saveOAuthState(tokens, user) {
+  googleTokens = tokens;
+  if (user) connectedUser = user;
+
+  // Persist to PostgreSQL if configured
+  if (isPostgresConfigured()) {
+    saveOAuthToDb(googleTokens, connectedUser, 'primary_user').catch(err => {
+      console.warn('[PostgreSQL saveOAuth Failed]:', err.message);
+    });
+  }
+
+  // Disk / memory fallback
   try {
-    analyzedEmails = [email, ...analyzedEmails.filter(e => e.id !== email.id)].slice(0, 100);
+    const dir = path.dirname(OAUTH_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(OAUTH_PATH, JSON.stringify({ tokens: googleTokens, user: connectedUser, lastSynced: new Date().toISOString() }, null, 2), 'utf8');
+  } catch (err) {
+    console.warn('[ThreatLens OAuth] Token memory persistence only:', err.message);
+  }
+}
+
+function persistEmail(email) {
+  analyzedEmails = [email, ...analyzedEmails.filter(e => e.id !== email.id)].slice(0, 100);
+
+  // Persist to PostgreSQL if configured
+  if (isPostgresConfigured()) {
+    saveEmailToDb(email).catch(err => {
+      console.warn('[PostgreSQL saveEmail Failed]:', err.message);
+    });
+  }
+
+  // Disk fallback
+  try {
     const dir = path.dirname(DB_PATH);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(DB_PATH, JSON.stringify(analyzedEmails, null, 2), 'utf8');
@@ -866,14 +914,36 @@ export async function handleRequest(req, res) {
   const pathname = url.pathname.startsWith('/api') ? url.pathname : `/api${url.pathname === '/' ? '' : url.pathname}`;
 
   if (req.method === 'GET' && (pathname === '/api/health' || pathname === '/api/')) {
+    const dbHealth = await getDbHealth();
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ONLINE', service: 'ThreatLens Persistent Forensic Engine', port: PORT, count: analyzedEmails.length }));
+    res.end(JSON.stringify({ 
+      status: 'ONLINE', 
+      service: 'ThreatLens Persistent Forensic Engine', 
+      port: PORT, 
+      count: analyzedEmails.length,
+      database: dbHealth
+    }));
+    return;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/db/status') {
+    const dbHealth = await getDbHealth();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(dbHealth));
     return;
   }
 
   if (req.method === 'GET' && pathname === '/api/emails') {
+    let emails = analyzedEmails;
+    if (isPostgresConfigured()) {
+      const dbEmails = await getEmailsFromDb(100);
+      if (Array.isArray(dbEmails)) {
+        emails = dbEmails;
+        analyzedEmails = dbEmails;
+      }
+    }
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ emails: analyzedEmails }));
+    res.end(JSON.stringify({ emails }));
     return;
   }
 
@@ -923,12 +993,24 @@ export async function handleRequest(req, res) {
   }
 
   if (req.method === 'GET' && pathname === '/api/auth/status') {
+    if (!googleTokens && isPostgresConfigured()) {
+      try {
+        const dbOAuth = await getOAuthFromDb('primary_user');
+        if (dbOAuth?.tokens) {
+          googleTokens = dbOAuth.tokens;
+          if (dbOAuth.user) connectedUser = dbOAuth.user;
+        }
+      } catch (_) {}
+    }
+
+    const dbHealth = await getDbHealth();
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       connected: !!(googleTokens && googleTokens.access_token),
       provider: googleTokens ? 'gmail' : null,
       user: connectedUser,
-      totalEmailsAnalyzed: analyzedEmails.length
+      totalEmailsAnalyzed: analyzedEmails.length,
+      database: dbHealth
     }));
     return;
   }
@@ -961,6 +1043,11 @@ export async function handleRequest(req, res) {
   if (req.method === 'POST' && pathname === '/api/auth/disconnect') {
     googleTokens = null;
     connectedUser = null;
+    if (isPostgresConfigured()) {
+      try {
+        await clearOAuthFromDb('primary_user');
+      } catch (_) {}
+    }
     try {
       if (fs.existsSync(OAUTH_PATH)) fs.unlinkSync(OAUTH_PATH);
     } catch (_) {}
@@ -1006,7 +1093,7 @@ export async function handleRequest(req, res) {
 const server = http.createServer(handleRequest);
 
 const isServerless = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NOW_REGION);
-if (!isServerless) {
+if (!isServerless && (!process.argv[1] || process.argv[1].endsWith('server.mjs') || process.argv[1].endsWith('server.js'))) {
   server.listen(PORT, () => {
     console.log(`[ThreatLens Persistent Forensic Backend] Running on http://localhost:${PORT}`);
   });
