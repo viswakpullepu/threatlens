@@ -1,8 +1,7 @@
 /**
  * ThreatLens AI — Live Gmail In-Mailbox Threat Shield
- * Injects real-time AI Threat Scores directly after the sender's name in both:
- * 1. The main Gmail Inbox list view (rows)
- * 2. The opened email conversation view
+ * Injects clean, minimalist colored threat scores directly after sender names:
+ * No pills, no backgrounds — only pure colored score numbers.
  */
 
 (function() {
@@ -20,10 +19,10 @@
     });
   }
 
-  console.log('[ThreatLens Shield] Active — scanning inbox rows and open messages.');
+  console.log('[ThreatLens Shield] Minimalist Colored Number Mode active.');
 
   /**
-   * Fast client-side Threat Assessment Engine
+   * Fast Threat Assessment Engine
    */
   function evaluateThreat(senderEmail, senderName, subject, snippetText) {
     let score = 5;
@@ -82,7 +81,6 @@
       const brand = brandNames[i];
       if (lowerName.includes(brand)) {
         if (!lowerEmail.includes(brand + '.') && !lowerEmail.endsWith('@' + brand + '.com')) {
-          // If name says Google or Facebook but email is generic or not from brand
           if (lowerEmail && !lowerEmail.includes(brand)) {
             score += 45;
             reasons.push('VIP Brand Impersonation: Displays "' + brand + '" from non-brand address (' + lowerEmail + ')');
@@ -111,7 +109,7 @@
   }
 
   /**
-   * 1. INBOX LIST VIEW INJECTION: Inject badge right after sender's name in table rows (tr.zA)
+   * INBOX LIST VIEW INJECTION: Clean colored number right after sender name
    */
   function injectBadgeIntoInboxRow(rowEl) {
     if (!isEnabled) return;
@@ -146,38 +144,29 @@
     }
 
     const score = analysis.threatScore;
-    let badgeClass = 'tl-row-safe';
-    let dotClass = 'tl-dot-safe';
-    let icon = '✅';
-
+    let scoreColorClass = 'tl-num-safe';
     if (score > 80) {
-      badgeClass = 'tl-row-critical';
-      dotClass = 'tl-dot-critical';
-      icon = '🚨';
+      scoreColorClass = 'tl-num-critical';
     } else if (score >= 50) {
-      badgeClass = 'tl-row-mild';
-      dotClass = 'tl-dot-mild';
-      icon = '⚠️';
+      scoreColorClass = 'tl-num-mild';
     }
 
-    // Create the clean inline badge
-    const badge = document.createElement('span');
-    badge.className = 'threatlens-inbox-badge ' + badgeClass;
-    badge.title = 'ThreatLens AI Security Score: ' + score + '/100 (' + analysis.threatLevel + ') - ' + analysis.reasons[0];
-    badge.innerHTML = 
-      '<span class="tl-inbox-dot ' + dotClass + '"></span>' +
-      '<span class="tl-inbox-score">' + score + '/100</span>';
+    // Create minimalist clean colored number element (No background, No pill)
+    const scoreSpan = document.createElement('span');
+    scoreSpan.className = 'threatlens-number-badge ' + scoreColorClass;
+    scoreSpan.title = 'ThreatLens AI Threat Score: ' + score + '/100 (' + analysis.threatLevel + ')';
+    scoreSpan.textContent = ' [' + score + ']';
 
-    // Insert immediately after the sender name element
+    // Insert immediately after sender name
     if (senderNameEl.nextSibling) {
-      senderNameEl.parentNode.insertBefore(badge, senderNameEl.nextSibling);
+      senderNameEl.parentNode.insertBefore(scoreSpan, senderNameEl.nextSibling);
     } else {
-      senderNameEl.parentNode.appendChild(badge);
+      senderNameEl.parentNode.appendChild(scoreSpan);
     }
   }
 
   /**
-   * 2. OPENED EMAIL VIEW INJECTION: Inject badge next to / below sender in header
+   * OPENED EMAIL VIEW INJECTION: Clean colored number right next to sender in header
    */
   function injectBadgeIntoOpenMessage(messageEl) {
     if (!isEnabled) return;
@@ -203,68 +192,20 @@
     }
 
     const score = analysis.threatScore;
-    let pillClass = 'tl-safe';
-    let dotColor = '#10b981';
-    let badgeText = '#065f46';
-    let badgeBg = '#ecfdf5';
-    let badgeBorder = '#a7f3d0';
-
+    let scoreColorClass = 'tl-num-safe';
     if (score > 80) {
-      pillClass = 'tl-critical';
-      dotColor = '#ef4444';
-      badgeText = '#991b1b';
-      badgeBg = '#fef2f2';
-      badgeBorder = '#fecaca';
+      scoreColorClass = 'tl-num-critical';
     } else if (score >= 50) {
-      pillClass = 'tl-mild';
-      dotColor = '#f59e0b';
-      badgeText = '#92400e';
-      badgeBg = '#fffbeb';
-      badgeBorder = '#fde68a';
+      scoreColorClass = 'tl-num-mild';
     }
 
-    const badgeContainer = document.createElement('div');
-    badgeContainer.className = 'threatlens-badge-wrapper ' + pillClass;
-    badgeContainer.innerHTML = 
-      '<div class="threatlens-pill" title="ThreatLens AI Real-Time Threat Score">' +
-        '<span class="threatlens-dot" style="background-color: ' + dotColor + ';"></span>' +
-        '<span class="threatlens-score">' + score + '/100</span>' +
-        '<span class="threatlens-tag">' + analysis.threatLevel.toUpperCase() + '</span>' +
-      '</div>' +
-      '<div class="threatlens-popover">' +
-        '<div class="tl-popover-header">' +
-          '<div class="tl-popover-title">' +
-            '<span class="tl-shield-icon">🛡️</span>' +
-            '<strong>ThreatLens AI Defense</strong>' +
-          '</div>' +
-          '<span class="tl-popover-score" style="color: ' + badgeText + '; background: ' + badgeBg + '; border: 1px solid ' + badgeBorder + ';">' +
-            score + '/100 ' + analysis.threatLevel +
-          '</span>' +
-        '</div>' +
-        '<div class="tl-popover-body">' +
-          '<div class="tl-info-row">' +
-            '<span class="tl-label">Sender:</span>' +
-            '<span class="tl-val" title="' + senderEmail + '">' + (senderEmail || senderName) + '</span>' +
-          </div>' +
-          '<div class="tl-info-row">' +
-            '<span class="tl-label">Verdict:</span>' +
-            '<span class="tl-val">' + (analysis.reasons[0] || 'Clean delivery') + '</span>' +
-          </div>' +
-          '<div class="tl-auth-grid">' +
-            '<span class="tl-auth-tag tl-pass">SPF: PASS</span>' +
-            '<span class="tl-auth-tag tl-pass">DKIM: PASS</span>' +
-            '<span class="tl-auth-tag ' + (score > 80 ? 'tl-fail' : 'tl-pass') + '">DMARC: ' + (score > 80 ? 'SUSP' : 'PASS') + '</span>' +
-          </div>' +
-        '</div>' +
-        '<div class="tl-popover-footer">' +
-          '<a href="' + customApiUrl + '" target="_blank" class="tl-btn-open">' +
-            'Open Full Forensics Suite ↗' +
-          '</a>' +
-        '</div>' +
-      '</div>';
+    const scoreSpan = document.createElement('span');
+    scoreSpan.className = 'threatlens-number-badge ' + scoreColorClass;
+    scoreSpan.title = 'ThreatLens AI Threat Score: ' + score + '/100 (' + analysis.threatLevel + ') - ' + (analysis.reasons[0] || 'Verified');
+    scoreSpan.textContent = ' [' + score + ']';
 
     if (senderEl.parentNode) {
-      senderEl.parentNode.appendChild(badgeContainer);
+      senderEl.parentNode.appendChild(scoreSpan);
     }
   }
 
@@ -272,7 +213,7 @@
    * Scan entire visible Gmail DOM
    */
   function scanGmail() {
-    // 1. Scan Inbox Table Rows (tr.zA, tr.zE, tr.yO)
+    // 1. Scan Inbox Rows
     const rows = document.querySelectorAll('tr.zA, tr.zE, tr.yO, [role="row"]');
     for (let i = 0; i < rows.length; i++) {
       injectBadgeIntoInboxRow(rows[i]);
@@ -285,7 +226,7 @@
     }
   }
 
-  // MutationObserver for instant detection as you scroll or open mail
+  // MutationObserver for continuous instant updates as you scroll
   const observer = new MutationObserver(function(mutations) {
     let shouldScan = false;
     for (let i = 0; i < mutations.length; i++) {
@@ -298,6 +239,6 @@
   });
 
   observer.observe(document.body, { childList: true, subtree: true });
-  setTimeout(scanGmail, 1000);
-  setInterval(scanGmail, 2000);
+  setTimeout(scanGmail, 800);
+  setInterval(scanGmail, 1500);
 })();
