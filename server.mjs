@@ -9,6 +9,43 @@ const DB_PATH = path.resolve('./src/data/emails_db.json');
 
 // In-memory cache + persistent disk DB
 let analyzedEmails = [];
+const OAUTH_PATH = path.resolve('./src/data/oauth_tokens.json');
+const OAUTH_CONFIG_PATH = path.resolve('./src/data/oauth_config.json');
+let googleTokens = null;
+let connectedUser = null;
+
+// Read config from disk or environment (gitignored)
+let oauthConfig = {};
+try {
+  if (fs.existsSync(OAUTH_CONFIG_PATH)) {
+    oauthConfig = JSON.parse(fs.readFileSync(OAUTH_CONFIG_PATH, 'utf8'));
+  }
+} catch (_) {}
+
+// Google OAuth Credentials
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || oauthConfig.GOOGLE_CLIENT_ID || '';
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || oauthConfig.GOOGLE_CLIENT_SECRET || '';
+const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || oauthConfig.GOOGLE_REDIRECT_URI || 'http://localhost:3001/api/auth/google/callback';
+
+// Load persistent tokens from disk
+try {
+  if (fs.existsSync(OAUTH_PATH)) {
+    const oData = JSON.parse(fs.readFileSync(OAUTH_PATH, 'utf8'));
+    googleTokens = oData.tokens || null;
+    connectedUser = oData.user || null;
+  }
+} catch (_) {}
+
+function saveOAuthState(tokens, user) {
+  googleTokens = tokens;
+  if (user) connectedUser = user;
+  try {
+    fs.mkdirSync(path.dirname(OAUTH_PATH), { recursive: true });
+    fs.writeFileSync(OAUTH_PATH, JSON.stringify({ tokens: googleTokens, user: connectedUser, lastSynced: new Date().toISOString() }, null, 2), 'utf8');
+  } catch (err) {
+    console.error('[ThreatLens OAuth] Failed to write tokens to disk:', err.message);
+  }
+}
 
 // Load persistent emails from database
 try {
@@ -31,6 +68,121 @@ function persistEmail(email) {
     fs.writeFileSync(DB_PATH, JSON.stringify(analyzedEmails, null, 2), 'utf8');
   } catch (err) {
     console.error('[ThreatLens DB] Failed to write email to disk:', err.message);
+  }
+}
+
+// ----------------------------------------------------
+// Google OAuth & Gmail Live Ingestion Helpers
+// ----------------------------------------------------
+function getGoogleAuthUrl() {
+  const rootUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
+  const options = {
+    redirect_uri: GOOGLE_REDIRECT_URI,
+    client_id: GOOGLE_CLIENT_ID,
+    access_type: 'offline',
+    response_type: 'code',
+    prompt: 'consent',
+    scope: [
+      'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/userinfo.profile',
+      'https://www.googleapis.com/auth/gmail.readonly'
+    ].join(' ')
+  };
+  return `${rootUrl}?${new URLSearchParams(options).toString()}`;
+}
+
+async function exchangeGoogleCodeForTokens(code) {
+  const url = 'https://oauth2.googleapis.com/token';
+  const values = {
+    code,
+    client_id: GOOGLE_CLIENT_ID,
+    client_secret: GOOGLE_CLIENT_SECRET,
+    redirect_uri: GOOGLE_REDIRECT_URI,
+    grant_type: 'authorization_code'
+  };
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams(values)
+  });
+  return res.json();
+}
+
+async function refreshGoogleAccessToken() {
+  if (!googleTokens?.refresh_token) return null;
+  const url = 'https://oauth2.googleapis.com/token';
+  const values = {
+    client_id: GOOGLE_CLIENT_ID,
+    client_secret: GOOGLE_CLIENT_SECRET,
+    refresh_token: googleTokens.refresh_token,
+    grant_type: 'refresh_token'
+  };
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams(values)
+    });
+    const data = await res.json();
+    if (data.access_token) {
+      googleTokens.access_token = data.access_token;
+      saveOAuthState(googleTokens, connectedUser);
+      return data.access_token;
+    }
+  } catch (_) {}
+  return null;
+}
+
+async function fetchGoogleUserProfile(accessToken) {
+  try {
+    const res = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    if (res.ok) return await res.json();
+  } catch (_) {}
+  return null;
+}
+
+async function syncGmailInbox(accessToken, limit = 10) {
+  try {
+    // 1. Fetch message IDs from user's primary inbox
+    const listRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${limit}&q=in:inbox`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    
+    if (listRes.status === 401) {
+      const refreshedToken = await refreshGoogleAccessToken();
+      if (refreshedToken) return syncGmailInbox(refreshedToken, limit);
+      return [];
+    }
+
+    const listData = await listRes.json();
+    if (!listData.messages || !Array.isArray(listData.messages)) return [];
+
+    const synced = [];
+    for (const item of listData.messages) {
+      try {
+        const msgRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${item.id}?format=raw`, {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        if (msgRes.ok) {
+          const msgData = await msgRes.json();
+          if (msgData.raw) {
+            const rawText = Buffer.from(msgData.raw, 'base64url').toString('utf8');
+            const analysis = await analyzeEmail(rawText, `gmail_live_${item.id}.eml`);
+            synced.push(analysis);
+          }
+        }
+      } catch (e) {
+        console.error(`[Gmail Sync Error for ${item.id}]:`, e.message);
+      }
+    }
+    return synced;
+  } catch (err) {
+    console.error('[Gmail Sync Error]:', err.message);
+    return [];
   }
 }
 
@@ -696,6 +848,90 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && url.pathname === '/api/emails') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ emails: analyzedEmails }));
+    return;
+  }
+
+  // ==========================================
+  // GOOGLE OAUTH & GMAIL LIVE INGESTION ROUTES
+  // ==========================================
+  if (req.method === 'GET' && url.pathname === '/api/auth/google/login') {
+    const authUrl = getGoogleAuthUrl();
+    res.writeHead(302, { Location: authUrl });
+    res.end();
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/auth/google/callback') {
+    const code = url.searchParams.get('code');
+    const error = url.searchParams.get('error');
+
+    if (error || !code) {
+      res.writeHead(302, { Location: `http://localhost:3000/?oauth_error=${encodeURIComponent(error || 'missing_code')}` });
+      res.end();
+      return;
+    }
+
+    try {
+      const tokens = await exchangeGoogleCodeForTokens(code);
+      if (tokens.access_token) {
+        const userProfile = await fetchGoogleUserProfile(tokens.access_token);
+        saveOAuthState(tokens, userProfile);
+
+        // Immediately auto-sync recent inbound messages from connected mailbox
+        const synced = await syncGmailInbox(tokens.access_token, 15);
+        console.log(`[ThreatLens OAuth] Successfully connected ${userProfile?.email || 'Gmail'}. Ingested and analyzed ${synced.length} emails.`);
+
+        res.writeHead(302, { Location: `http://localhost:3000/?connected=gmail&user=${encodeURIComponent(userProfile?.email || '')}&count=${synced.length}` });
+        res.end();
+        return;
+      } else {
+        throw new Error(tokens.error_description || tokens.error || 'Token exchange failed');
+      }
+    } catch (err) {
+      console.error('[ThreatLens OAuth Callback Error]:', err.message);
+      res.writeHead(302, { Location: `http://localhost:3000/?oauth_error=${encodeURIComponent(err.message)}` });
+      res.end();
+      return;
+    }
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/auth/status') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      connected: !!(googleTokens && googleTokens.access_token),
+      provider: googleTokens ? 'gmail' : null,
+      user: connectedUser,
+      totalEmailsAnalyzed: analyzedEmails.length
+    }));
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/auth/google/sync') {
+    if (!googleTokens?.access_token) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: 'No Gmail account connected via OAuth' }));
+      return;
+    }
+
+    try {
+      const synced = await syncGmailInbox(googleTokens.access_token, 15);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, count: synced.length, user: connectedUser }));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: err.message }));
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/auth/disconnect') {
+    googleTokens = null;
+    connectedUser = null;
+    try {
+      if (fs.existsSync(OAUTH_PATH)) fs.unlinkSync(OAUTH_PATH);
+    } catch (_) {}
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: true, message: 'Disconnected successfully' }));
     return;
   }
 

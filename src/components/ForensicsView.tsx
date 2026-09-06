@@ -19,7 +19,12 @@ import {
   Link as LinkIcon,
   Paperclip,
   Check,
-  ChevronDown
+  ChevronDown,
+  RefreshCw,
+  Radio,
+  Mail,
+  Lock,
+  LogOut
 } from 'lucide-react';
 import { SAMPLE_EMAILS } from '../data/threatData';
 import { ForensicReportModal } from './ForensicReportModal';
@@ -33,6 +38,9 @@ export const ForensicsView: React.FC = () => {
   const [isRawModalOpen, setIsRawModalOpen] = useState(false);
   const [rawEmailText, setRawEmailText] = useState('');
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [oauthStatus, setOauthStatus] = useState<{ connected: boolean; user?: any; provider?: string } | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [customEmails, setCustomEmails] = useState<any[]>(() => {
     try {
       const cached = localStorage.getItem(STORAGE_KEY);
@@ -42,24 +50,77 @@ export const ForensicsView: React.FC = () => {
     }
   });
 
-  // Sync with persistent backend database on load
+  const refreshEmailsFromBackend = async () => {
+    try {
+      const res = await fetch('/api/emails');
+      const data = await res.json();
+      if (data.emails && Array.isArray(data.emails) && data.emails.length > 0) {
+        setCustomEmails(prev => {
+          const combined = [...data.emails, ...prev];
+          const uniqueMap = new Map();
+          combined.forEach(e => { if (e && e.id) uniqueMap.set(e.id, e); });
+          const merged = Array.from(uniqueMap.values());
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch (_) {}
+          return merged;
+        });
+        if (data.emails[0]) setSelectedEmail(data.emails[0]);
+      }
+    } catch (_) {}
+  };
+
+  const checkOAuthStatus = async () => {
+    try {
+      const res = await fetch('/api/auth/status');
+      const data = await res.json();
+      setOauthStatus(data);
+    } catch (_) {}
+  };
+
+  // Sync with persistent backend database on load + check url params
   useEffect(() => {
-    fetch('/api/emails')
-      .then(res => res.json())
-      .then(data => {
-        if (data.emails && Array.isArray(data.emails) && data.emails.length > 0) {
-          setCustomEmails(prev => {
-            const combined = [...data.emails, ...prev];
-            const uniqueMap = new Map();
-            combined.forEach(e => { if (e && e.id) uniqueMap.set(e.id, e); });
-            const merged = Array.from(uniqueMap.values());
-            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch (_) {}
-            return merged;
-          });
-        }
-      })
-      .catch(() => {});
+    refreshEmailsFromBackend();
+    checkOAuthStatus();
+
+    // Check if returned from OAuth redirect
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('connected') === 'gmail') {
+      const user = params.get('user') || 'Gmail Inbox';
+      const count = params.get('count') || '0';
+      setSyncMessage(`🎉 Live Connected to ${user}! Synced & analyzed ${count} emails.`);
+      window.history.replaceState({}, document.title, window.location.pathname);
+      refreshEmailsFromBackend();
+      checkOAuthStatus();
+      setTimeout(() => setSyncMessage(null), 6000);
+    }
   }, []);
+
+  const handleSyncGmail = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await fetch('/api/auth/google/sync', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        setSyncMessage(`✅ Synced ${data.count} new messages from ${data.user?.email || 'Gmail'}!`);
+        await refreshEmailsFromBackend();
+      } else {
+        setSyncMessage(`⚠️ Sync Notice: ${data.error}`);
+      }
+    } catch (e) {
+      setSyncMessage('⚠️ Could not connect to sync service');
+    }
+    setIsSyncing(false);
+    setTimeout(() => setSyncMessage(null), 5000);
+  };
+
+  const handleDisconnect = async () => {
+    if (!confirm('Disconnect live Gmail account?')) return;
+    try {
+      await fetch('/api/auth/disconnect', { method: 'POST' });
+      setOauthStatus({ connected: false });
+      setSyncMessage('Disconnected Gmail account');
+      setTimeout(() => setSyncMessage(null), 3000);
+    } catch (_) {}
+  };
 
   const allEmails = [...customEmails, ...SAMPLE_EMAILS];
   const isThreat = selectedEmail.isThreat;
@@ -117,32 +178,73 @@ export const ForensicsView: React.FC = () => {
   return (
     <div className="space-y-6">
       
-      {/* 1. SCENARIO SELECTOR & UPLOAD BAR */}
+      {/* 1. SCENARIO SELECTOR & UPLOAD / OAUTH BAR */}
       <div className="space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {syncMessage && (
+          <div className="p-3 bg-indigo-50 border border-indigo-200 text-indigo-900 rounded-xl text-xs font-bold flex items-center justify-between animate-in fade-in">
+            <span>{syncMessage}</span>
+            <button onClick={() => setSyncMessage(null)} className="text-indigo-600 hover:text-indigo-900">✕</button>
+          </div>
+        )}
+
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs flex items-center justify-center font-bold">
                 1
               </span>
-              Select Scenario or Upload Email for Forensic Analysis
+              Select Scenario or Ingest Live Email via OAuth
             </h2>
             <p className="text-xs text-slate-500">
-              Pick any pre-loaded scenario or drag-and-drop your own email to analyze SPF/DKIM/DMARC, spoofing, URLs, and headers
+              Pick pre-loaded scenarios, connect your live Gmail inbox via OAuth2, or drop .EML files
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Live OAuth Connector */}
+            {oauthStatus?.connected ? (
+              <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-1.5 shadow-2xs">
+                <div className="flex items-center gap-1.5 text-xs text-emerald-800 font-bold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="max-w-[140px] truncate">{oauthStatus.user?.email || 'Gmail Connected'}</span>
+                </div>
+                <button
+                  onClick={handleSyncGmail}
+                  disabled={isSyncing}
+                  className="p-1 bg-white hover:bg-emerald-100 text-emerald-700 rounded-lg transition-all cursor-pointer"
+                  title="Sync latest emails from Gmail inbox"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                </button>
+                <button
+                  onClick={handleDisconnect}
+                  className="p-1 text-slate-400 hover:text-red-600 rounded transition-colors cursor-pointer"
+                  title="Disconnect account"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <a 
+                href="http://localhost:3001/api/auth/google/login"
+                className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer"
+                title="Connect Gmail inbox via OAuth2 (No passwords stored)"
+              >
+                <img src="https://www.google.com/favicon.ico" className="w-3.5 h-3.5 rounded-full" alt="Google" />
+                <span>Connect Live Gmail</span>
+              </a>
+            )}
+
             <button 
               onClick={() => setIsRawModalOpen(true)}
-              className="px-3.5 py-2 bg-white border border-slate-200 hover:border-slate-300 text-slate-700 text-xs font-bold rounded-xl shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-3 py-2 bg-white border border-slate-200 hover:border-slate-300 text-slate-700 text-xs font-bold rounded-xl shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <ClipboardPaste className="w-3.5 h-3.5 text-indigo-600" />
-              Paste Raw Email Text
+              Paste Text
             </button>
-            <label className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl border border-indigo-200 transition-all flex items-center gap-1.5 cursor-pointer">
+            <label className="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl border border-indigo-200 transition-all flex items-center gap-1.5 cursor-pointer">
               <UploadCloud className="w-3.5 h-3.5" />
-              Upload .EML File
+              Upload .EML
               <input type="file" accept=".eml,.msg,.txt" onChange={handleFileUpload} className="hidden" />
             </label>
           </div>
