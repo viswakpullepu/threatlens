@@ -17,7 +17,6 @@ import {
   X,
   Crosshair
 } from 'lucide-react';
-import { THREAT_LOCATIONS } from '../data/threatData';
 
 interface ThreatLocationItem {
   id: string;
@@ -98,7 +97,7 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
     fetch('/api/emails')
       .then(res => res.json())
       .then(data => {
-        if (data.emails && Array.isArray(data.emails) && data.emails.length > 0) {
+        if (data.emails && Array.isArray(data.emails)) {
           setCustomEmails(prev => {
             const combined = [...data.emails, ...prev];
             const uniqueMap = new Map();
@@ -112,9 +111,9 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
       .catch(() => {});
   }, []);
 
-  // Merge built-in locations with custom analyzed emails mapped to coordinates
+  // Map real analyzed emails directly to 3D spherical coordinates
   const allThreatLocations: ThreatLocationItem[] = useMemo(() => {
-    const base: ThreatLocationItem[] = [...THREAT_LOCATIONS];
+    const locations: ThreatLocationItem[] = [];
 
     customEmails.forEach((email) => {
       if (!email) return;
@@ -128,35 +127,41 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
         }
       }
 
-      // Check if already in list
-      if (!base.some(b => b.id === email.id)) {
-        base.unshift({
+      if (!locations.some(b => b.id === email.id)) {
+        const score = email.threatScore ?? (email.isThreat ? 85 : 0);
+        locations.push({
           id: email.id || `custom-${Date.now()}`,
           ip: email.sender?.originIp || '192.0.2.1',
           city: matchedCoords.city,
           country: matchedCoords.country,
           lat: matchedCoords.lat,
           lng: matchedCoords.lng,
-          severity: email.isThreat ? (email.threatScore > 75 ? 'critical' : 'high') : 'safe',
-          severityLabel: email.severityLabel || (email.isThreat ? 'Suspicious Origin' : 'Safe & Verified'),
+          severity: score > 80 ? 'critical' : (score >= 50 ? 'high' : 'safe'),
+          severityLabel: email.severityLabel || (score > 80 ? 'Critical Threat' : (score >= 50 ? 'Mild Threat' : 'Safe & Verified')),
           type: email.userFriendlyCategory || 'Analyzed Stream',
-          simpleTitle: email.title || 'Custom Analyzed Email',
+          simpleTitle: email.title || email.metadata?.subject || 'Live Analyzed Email',
           sender: email.sender?.email || 'unknown@sender.com',
           subject: email.metadata?.subject || 'Email Subject',
-          threatScore: email.threatScore ?? (email.isThreat ? 85 : 5),
+          threatScore: score,
           asn: email.sender?.asn || 'AS15169 (Direct Hop)',
-          status: email.isThreat ? 'Investigated & Flagged' : 'Verified Legitimate',
-          timestamp: 'Just now',
-          plainSummary: email.simpleTakeaway || (email.isThreat ? 'Threat detected in forensic inspection.' : 'Clean email with verified cryptographic signatures.'),
-          isThreat: email.isThreat
+          status: score > 80 ? '🚨 Critical Threat' : (score >= 50 ? '⚠️ Mild Threat' : '✅ 100% Safe & Verified'),
+          timestamp: email.metadata?.date || 'Today',
+          plainSummary: email.simpleTakeaway || (score > 80 ? 'High-risk payload or spoofing detected.' : (score >= 50 ? 'Mild anomalies detected.' : 'Legitimate clean message with verified cryptographic signatures.')),
+          isThreat: score >= 50
         });
       }
     });
 
-    return base;
+    return locations;
   }, [customEmails]);
 
-  const [selectedThreat, setSelectedThreat] = useState<ThreatLocationItem>(allThreatLocations[0] || THREAT_LOCATIONS[0]);
+  const [selectedThreat, setSelectedThreat] = useState<ThreatLocationItem | null>(allThreatLocations[0] || null);
+
+  useEffect(() => {
+    if (!selectedThreat && allThreatLocations.length > 0) {
+      setSelectedThreat(allThreatLocations[0]);
+    }
+  }, [allThreatLocations]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isAutoRotating, setIsAutoRotating] = useState(true);
@@ -593,8 +598,13 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
     );
   }, [allThreatLocations, searchQuery]);
 
-  const threatScore = selectedThreat.threatScore || 94;
+  const activeThreat = selectedThreat || (allThreatLocations.length > 0 ? allThreatLocations[0] : null);
+  const threatScore = activeThreat ? (activeThreat.threatScore || 0) : 0;
   const strokeDashoffset = 213.6 - (213.6 * threatScore) / 100;
+
+  const criticalCount = customEmails.filter(e => (e.threatScore ?? 0) > 80).length;
+  const mildCount = customEmails.filter(e => (e.threatScore ?? 0) >= 50 && (e.threatScore ?? 0) <= 80).length;
+  const safeCount = customEmails.filter(e => (e.threatScore ?? 0) < 50).length;
 
   return (
     <div className="space-y-6">
@@ -606,7 +616,7 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex items-center justify-between">
           <div className="space-y-1">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-              Threat Severity Index
+              Focused Severity Index
             </span>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-black font-mono text-slate-900">
@@ -620,7 +630,7 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
                   ? 'bg-red-100 text-red-700 border-red-200' 
                   : (threatScore >= 50 ? 'bg-orange-100 text-orange-700 border-orange-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200')
               }`}>
-                {threatScore > 80 ? 'Critical Threat (Red)' : (threatScore >= 50 ? 'Mild Threat (Orange)' : '100% Safe (Green)')}
+                {threatScore > 80 ? 'Critical Threat (Red)' : (threatScore >= 50 ? 'Mild Threat (Orange)' : (activeThreat ? '100% Safe (Green)' : 'Awaiting Inbound'))}
               </span>
             </div>
           </div>
@@ -650,20 +660,20 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-1">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-              Active Feeds
+              Live Ingested Emails
             </span>
-            <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-100 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse"></span>
-              Live Synced
+            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
+              Live Pipeline
             </span>
           </div>
           <div className="text-3xl font-black font-mono text-slate-900">
-            {allThreatLocations.length + 3270}
+            {customEmails.length}
           </div>
-          <div className="text-xs text-slate-500 flex items-center gap-1.5 pt-1">
-            <span className="text-red-600 font-bold font-mono">1,428</span> Phish • 
-            <span className="text-orange-600 font-bold font-mono">892</span> Malware • 
-            <span className="text-emerald-600 font-bold font-mono">{customEmails.length + 12}</span> Verified
+          <div className="text-xs text-slate-500 flex items-center gap-1.5 pt-1 font-mono">
+            <span className="text-red-600 font-bold">{criticalCount}</span> Critical • 
+            <span className="text-orange-600 font-bold">{mildCount}</span> Mild • 
+            <span className="text-emerald-600 font-bold">{safeCount}</span> Safe
           </div>
         </div>
 
@@ -672,26 +682,32 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5 text-indigo-600" />
-              Target Telemetry & Coordinates
+              Origin Telemetry & Coordinates
             </span>
             <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
-              selectedThreat.severity === 'safe' 
+              activeThreat?.severity === 'safe' 
                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
                 : 'bg-red-50 text-red-700 border-red-200'
             }`}>
-              {selectedThreat.status || 'Active Origin'}
+              {activeThreat?.status || 'Awaiting Live Origin'}
             </span>
           </div>
           <div className="font-mono text-sm font-bold text-slate-900 truncate">
-            {selectedThreat.sender}
+            {activeThreat ? activeThreat.sender : 'No active email sender selected'}
           </div>
           <div className="text-xs text-slate-500 flex items-center gap-2 truncate">
-            <span className="font-bold text-slate-700">Origin:</span> 
-            <span className="font-mono text-indigo-600 font-bold">{selectedThreat.city}, {selectedThreat.country}</span> • 
-            <span className="font-bold text-slate-700">IP:</span> 
-            <span className="font-mono text-slate-600">{selectedThreat.ip}</span> • 
-            <span className="font-bold text-slate-700">Lat/Lng:</span>
-            <span className="font-mono text-slate-500">{selectedThreat.lat.toFixed(2)}°, {selectedThreat.lng.toFixed(2)}°</span>
+            {activeThreat ? (
+              <>
+                <span className="font-bold text-slate-700">Origin:</span> 
+                <span className="font-mono text-indigo-600 font-bold">{activeThreat.city}, {activeThreat.country}</span> • 
+                <span className="font-bold text-slate-700">IP:</span> 
+                <span className="font-mono text-slate-600">{activeThreat.ip}</span> • 
+                <span className="font-bold text-slate-700">Lat/Lng:</span>
+                <span className="font-mono text-slate-500">{activeThreat.lat.toFixed(2)}°, {activeThreat.lng.toFixed(2)}°</span>
+              </>
+            ) : (
+              <span>Connect Gmail or upload an .EML file in Forensics to plot origin coordinates.</span>
+            )}
           </div>
         </div>
 
@@ -718,8 +734,9 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
                     setIsSearchOpen(true);
                   }}
                   onFocus={() => setIsSearchOpen(true)}
-                  placeholder="Search city, country, IP address, sender, or subject..."
-                  className="w-full pl-9 pr-8 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-sans"
+                  placeholder={allThreatLocations.length > 0 ? "Search city, country, IP address, sender..." : "Awaiting emails to search..."}
+                  disabled={allThreatLocations.length === 0}
+                  className="w-full pl-9 pr-8 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-sans disabled:opacity-60"
                 />
                 {searchQuery && (
                   <button
@@ -737,9 +754,6 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
                   {searchResults.map((item) => {
                     const score = item.threatScore ?? 0;
                     const dotClass = score > 80 ? 'bg-red-500' : (score >= 50 ? 'bg-orange-500' : 'bg-emerald-500');
-                    const badgeClass = score > 80 
-                      ? 'bg-red-100 text-red-800' 
-                      : (score >= 50 ? 'bg-orange-100 text-orange-800' : 'bg-emerald-100 text-emerald-800');
                     return (
                       <div
                         key={item.id}
@@ -748,20 +762,16 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
                           setIsSearchOpen(false);
                           setSearchQuery('');
                         }}
-                        className="p-2.5 hover:bg-indigo-50/70 transition-colors cursor-pointer flex items-center justify-between gap-2 text-xs"
+                        className="p-3 hover:bg-slate-50 cursor-pointer flex items-center justify-between text-xs transition-colors"
                       >
-                        <div className="min-w-0">
-                          <div className="font-bold text-slate-900 truncate flex items-center gap-1.5">
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2">
                             <span className={`w-2 h-2 rounded-full ${dotClass}`} />
-                            {item.city}, {item.country}
+                            <span className="font-bold text-slate-900">{item.city}, {item.country}</span>
                           </div>
-                          <div className="text-[11px] text-slate-500 truncate font-mono">
-                            {item.sender} • {item.ip}
-                          </div>
+                          <p className="text-[11px] text-slate-500 truncate max-w-xs">{item.sender}</p>
                         </div>
-                        <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${badgeClass}`}>
-                          {item.threatScore}/100
-                        </span>
+                        <span className="text-[10px] font-mono text-slate-400 font-bold">{score}/100</span>
                       </div>
                     );
                   })}
@@ -769,105 +779,120 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
               )}
             </div>
 
-            {/* Quick Status Legend */}
-            <div className="flex items-center gap-3 text-xs text-slate-500 shrink-0">
-              <span className="flex items-center gap-1">
-                <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span> Threat
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Safe
-              </span>
-              <span className="text-slate-300">|</span>
-              <div className="font-mono text-[11px] text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                Alt: {cameraDistance}km
-              </div>
+            {/* Live Indicator */}
+            <div className="flex items-center gap-2 text-xs font-mono text-slate-500">
+              <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
+              <span>RADAR ONLINE</span>
             </div>
           </div>
 
-          {/* 3D Canvas Viewport */}
-          <div className="relative w-full h-[420px] sm:h-[460px] bg-slate-950 overflow-hidden">
-            <div id="globe-canvas-container" ref={canvasContainerRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
+          {/* Three.js Canvas Container */}
+          <div className="relative w-full h-[460px] bg-slate-950 overflow-hidden">
+            <div ref={canvasContainerRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
 
-            {/* On-Globe Floating Controls (Zoom, Reset, Spin) */}
+            {/* Navigation & Zoom HUD Buttons */}
             <div className="absolute right-4 bottom-4 flex flex-col gap-1.5 z-10">
               <button
                 onClick={handleZoomIn}
                 title="Zoom In"
-                className="w-8 h-8 bg-white/90 hover:bg-white text-slate-700 hover:text-indigo-600 rounded-lg shadow-md border border-slate-200 flex items-center justify-center transition-all backdrop-blur-xs"
+                className="w-8 h-8 bg-white/90 hover:bg-white text-slate-700 hover:text-indigo-600 rounded-lg shadow-md border border-slate-200 flex items-center justify-center transition-all backdrop-blur-xs cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
               </button>
               <button
                 onClick={handleZoomOut}
                 title="Zoom Out"
-                className="w-8 h-8 bg-white/90 hover:bg-white text-slate-700 hover:text-indigo-600 rounded-lg shadow-md border border-slate-200 flex items-center justify-center transition-all backdrop-blur-xs"
+                className="w-8 h-8 bg-white/90 hover:bg-white text-slate-700 hover:text-indigo-600 rounded-lg shadow-md border border-slate-200 flex items-center justify-center transition-all backdrop-blur-xs cursor-pointer"
               >
                 <Minus className="w-4 h-4" />
               </button>
               <button
                 onClick={handleResetView}
                 title="Reset View"
-                className="w-8 h-8 bg-white/90 hover:bg-white text-slate-700 hover:text-indigo-600 rounded-lg shadow-md border border-slate-200 flex items-center justify-center transition-all backdrop-blur-xs"
+                className="w-8 h-8 bg-white/90 hover:bg-white text-slate-700 hover:text-indigo-600 rounded-lg shadow-md border border-slate-200 flex items-center justify-center transition-all backdrop-blur-xs cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => setIsAutoRotating(!isAutoRotating)}
                 title={isAutoRotating ? "Pause Auto-Rotation" : "Start Auto-Rotation"}
-                className="w-8 h-8 bg-white/90 hover:bg-white text-slate-700 hover:text-indigo-600 rounded-lg shadow-md border border-slate-200 flex items-center justify-center transition-all backdrop-blur-xs"
+                className="w-8 h-8 bg-white/90 hover:bg-white text-slate-700 hover:text-indigo-600 rounded-lg shadow-md border border-slate-200 flex items-center justify-center transition-all backdrop-blur-xs cursor-pointer"
               >
                 {isAutoRotating ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
               </button>
             </div>
 
             {/* Active Target Floating Pin Tag */}
-            <div className="absolute left-4 top-4 bg-slate-900/90 text-white border border-slate-700/80 rounded-xl p-3 shadow-xl backdrop-blur-md max-w-xs z-10 pointer-events-none transition-all">
-              <div className="flex items-center gap-2 pb-1.5 border-b border-slate-800">
-                <Crosshair className="w-3.5 h-3.5 text-indigo-400 animate-spin" style={{ animationDuration: '6s' }} />
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-indigo-300">
-                  Focused Telemetry Target
-                </span>
-              </div>
-              <div className="mt-2 space-y-1">
-                <div className="text-xs font-bold text-slate-100 flex items-center justify-between">
-                  <span>{selectedThreat.city}, {selectedThreat.country}</span>
-                  <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded ${
-                    selectedThreat.severity === 'safe' ? 'bg-emerald-900 text-emerald-300' : 'bg-red-900 text-red-300'
-                  }`}>
-                    {selectedThreat.threatScore}/100
+            {activeThreat && (
+              <div className="absolute left-4 top-4 bg-slate-900/90 text-white border border-slate-700/80 rounded-xl p-3 shadow-xl backdrop-blur-md max-w-xs z-10 pointer-events-none transition-all">
+                <div className="flex items-center gap-2 pb-1.5 border-b border-slate-800">
+                  <Crosshair className="w-3.5 h-3.5 text-indigo-400 animate-spin" style={{ animationDuration: '6s' }} />
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-indigo-300">
+                    Focused Telemetry Target
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-300 font-mono truncate">{selectedThreat.sender}</p>
-                <div className="text-[10px] text-slate-400 font-mono flex items-center gap-2">
-                  <span>IP: {selectedThreat.ip}</span>
-                  <span>•</span>
-                  <span>{selectedThreat.asn?.split(' ')[0]}</span>
+                <div className="mt-2 space-y-1">
+                  <div className="text-xs font-bold text-slate-100 flex items-center justify-between">
+                    <span>{activeThreat.city}, {activeThreat.country}</span>
+                    <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded ${
+                      activeThreat.severity === 'safe' ? 'bg-emerald-900 text-emerald-300' : 'bg-red-900 text-red-300'
+                    }`}>
+                      {activeThreat.threatScore}/100
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 font-mono truncate">{activeThreat.sender}</p>
+                  <div className="text-[10px] text-slate-400 font-mono flex items-center gap-2">
+                    <span>IP: {activeThreat.ip}</span>
+                    <span>•</span>
+                    <span>{activeThreat.asn?.split(' ')[0]}</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* Zero Telemetry HUD Overlay */}
+            {allThreatLocations.length === 0 && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none p-6">
+                <div className="bg-slate-900/80 border border-slate-700/70 rounded-2xl p-5 text-center max-w-sm backdrop-blur-md shadow-2xl pointer-events-auto">
+                  <GlobeIcon className="w-8 h-8 text-indigo-400 mx-auto mb-2 opacity-80" />
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">Awaiting Threat Telemetry</h4>
+                  <p className="text-[11px] text-slate-400 mt-1 mb-3">
+                    No emails ingested yet. Connect your live Gmail inbox or upload an .EML file to plot incoming attack origins.
+                  </p>
+                  <button
+                    onClick={onOpenForensics}
+                    className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                  >
+                    Open Forensics Suite
+                  </button>
+                </div>
+              </div>
+            )}
 
           </div>
 
           {/* Quick Location Jump Badges */}
-          <div className="p-3 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center gap-2 text-xs">
-            <span className="font-bold text-slate-500 text-[11px] uppercase tracking-wider mr-1">
-              Quick Focus:
-            </span>
-            {allThreatLocations.slice(0, 6).map((threat) => (
-              <button
-                key={threat.id}
-                onClick={() => flyToThreatLocation(threat, true)}
-                className={`px-2.5 py-1 rounded-lg font-medium border text-[11px] transition-all flex items-center gap-1 ${
-                  selectedThreat.id === threat.id
-                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                    : 'bg-white hover:bg-indigo-50 hover:text-indigo-600 border-slate-200 text-slate-700'
-                }`}
-              >
-                <span>{threat.city}</span>
-                <span className={`w-1.5 h-1.5 rounded-full ${threat.severity === 'safe' ? 'bg-emerald-400' : 'bg-red-400'}`} />
-              </button>
-            ))}
-          </div>
+          {allThreatLocations.length > 0 && (
+            <div className="p-3 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center gap-2 text-xs">
+              <span className="font-bold text-slate-500 text-[11px] uppercase tracking-wider mr-1">
+                Quick Focus:
+              </span>
+              {allThreatLocations.slice(0, 6).map((threat) => (
+                <button
+                  key={threat.id}
+                  onClick={() => flyToThreatLocation(threat, true)}
+                  className={`px-2.5 py-1 rounded-lg font-medium border text-[11px] transition-all flex items-center gap-1 cursor-pointer ${
+                    activeThreat?.id === threat.id
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                      : 'bg-white hover:bg-indigo-50 hover:text-indigo-600 border-slate-200 text-slate-700'
+                  }`}
+                >
+                  <span>{threat.city}</span>
+                  <span className={`w-1.5 h-1.5 rounded-full ${threat.severity === 'safe' ? 'bg-emerald-400' : 'bg-red-400'}`} />
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Threat Plain Telemetry Summary Footer */}
           <div className="p-4 bg-slate-900 text-white border-t border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -877,12 +902,12 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
                 Live Incident Forensic Summary
               </div>
               <p className="text-xs text-slate-200 font-medium leading-relaxed">
-                {selectedThreat.plainSummary}
+                {activeThreat ? activeThreat.plainSummary : 'Awaiting live stream. Connect your Gmail account or ingest email files to view origin telemetry.'}
               </p>
             </div>
             <button 
               onClick={onOpenForensics}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shrink-0 transition-all flex items-center gap-1.5 shadow-sm"
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shrink-0 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
             >
               <Microscope className="w-3.5 h-3.5" />
               Open Forensics
@@ -895,60 +920,68 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-2">
-                <Radio className="w-4 h-4 text-red-500 animate-pulse" />
-                Live Threat Incidents
+                <Radio className="w-4 h-4 text-indigo-600" />
+                Live Ingested Feed ({allThreatLocations.length})
               </h3>
-              <span className="text-[10px] text-slate-400 font-medium">Click to zoom & locate</span>
+              <span className="text-[10px] text-slate-400 font-medium">Click to locate</span>
             </div>
 
             {/* Threat Feed Scrollable List */}
-            <div className="space-y-2.5 mt-4 max-h-[380px] overflow-y-auto pr-1">
-              {allThreatLocations.map((item) => {
-                const isItemActive = selectedThreat.id === item.id;
-                const score = item.threatScore ?? 0;
-                const dotClass = score > 80 ? 'bg-red-500' : (score >= 50 ? 'bg-orange-500' : 'bg-emerald-500');
-                const badgeClass = score > 80 
-                  ? 'bg-red-100 text-red-800' 
-                  : (score >= 50 ? 'bg-orange-100 text-orange-800' : 'bg-emerald-100 text-emerald-800');
-                return (
-                  <div
-                    key={item.id}
-                    onClick={() => flyToThreatLocation(item, true)}
-                    className={`p-3 rounded-xl border transition-all cursor-pointer ${
-                      isItemActive
-                        ? 'bg-indigo-50/90 border-indigo-400 ring-2 ring-indigo-200 shadow-xs'
-                        : 'bg-slate-50/70 border-slate-200 hover:border-slate-300 hover:bg-slate-100/70'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="space-y-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className={`w-2 h-2 rounded-full shrink-0 ${dotClass}`} />
-                          <span className="text-xs font-bold text-slate-900 truncate">
-                            {item.city}, {item.country}
+            {allThreatLocations.length > 0 ? (
+              <div className="space-y-2.5 mt-4 max-h-[380px] overflow-y-auto pr-1">
+                {allThreatLocations.map((item) => {
+                  const isItemActive = activeThreat?.id === item.id;
+                  const score = item.threatScore ?? 0;
+                  const dotClass = score > 80 ? 'bg-red-500' : (score >= 50 ? 'bg-orange-500' : 'bg-emerald-500');
+                  const badgeClass = score > 80 
+                    ? 'bg-red-100 text-red-800' 
+                    : (score >= 50 ? 'bg-orange-100 text-orange-800' : 'bg-emerald-100 text-emerald-800');
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => flyToThreatLocation(item, true)}
+                      className={`p-3 rounded-xl border transition-all cursor-pointer ${
+                        isItemActive
+                          ? 'bg-indigo-50/90 border-indigo-400 ring-2 ring-indigo-200 shadow-xs'
+                          : 'bg-slate-50/70 border-slate-200 hover:border-slate-300 hover:bg-slate-100/70'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="space-y-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${dotClass}`} />
+                            <span className="text-xs font-bold text-slate-900 truncate">
+                              {item.city}, {item.country}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-600 line-clamp-1 font-medium">
+                            {item.simpleTitle}
+                          </p>
+                          <div className="text-[10px] font-mono text-slate-400 truncate">
+                            {item.sender}
+                          </div>
+                          <div className="text-[10px] font-mono text-slate-400">
+                            {item.ip} • {item.timestamp}
+                          </div>
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${badgeClass}`}>
+                            {item.threatScore}/100
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-600 line-clamp-1 font-medium">
-                          {item.simpleTitle}
-                        </p>
-                        <div className="text-[10px] font-mono text-slate-400 truncate">
-                          {item.sender}
-                        </div>
-                        <div className="text-[10px] font-mono text-slate-400">
-                          {item.ip} • {item.timestamp}
-                        </div>
-                      </div>
-
-                      <div className="text-right shrink-0">
-                        <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${badgeClass}`}>
-                          {item.threatScore}/100
-                        </span>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="p-8 text-center text-slate-400 space-y-2 mt-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                <Microscope className="w-6 h-6 mx-auto text-slate-300" />
+                <p className="text-xs font-medium text-slate-600">No telemetry logged</p>
+                <p className="text-[11px] text-slate-400">Sync Gmail or upload an email to populate this feed.</p>
+              </div>
+            )}
           </div>
 
           {/* Quick Action Card */}
@@ -957,7 +990,7 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
             <p className="text-[11px] text-slate-600">Upload any .eml file or paste text to inspect headers, domains, and IOCs.</p>
             <button 
               onClick={onOpenForensics}
-              className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs"
+              className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer"
             >
               Open Forensics Suite
             </button>
