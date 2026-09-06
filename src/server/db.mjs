@@ -1,17 +1,19 @@
 import pg from 'pg';
 const { Pool } = pg;
 
-const DATABASE_URL = process.env.DATABASE_URL || 
-                     process.env.POSTGRES_URL || 
-                     process.env.POSTGRES_PRISMA_URL || 
-                     process.env.POSTGRES_URL_NON_POOLING || '';
+export function getDbUrl() {
+  return process.env.DATABASE_URL || 
+         process.env.POSTGRES_URL || 
+         process.env.POSTGRES_PRISMA_URL || 
+         process.env.POSTGRES_URL_NON_POOLING || '';
+}
 
 let pool = null;
 let isInitialized = false;
 let initPromise = null;
 
 export function isPostgresConfigured() {
-  return !!(DATABASE_URL || process.env.PGHOST);
+  return !!(getDbUrl() || process.env.PGHOST);
 }
 
 export function getPool() {
@@ -19,17 +21,18 @@ export function getPool() {
   if (!isPostgresConfigured()) return null;
 
   try {
+    const dbUrl = getDbUrl();
     const config = {};
-    if (DATABASE_URL) {
-      config.connectionString = DATABASE_URL;
+    if (dbUrl) {
+      config.connectionString = dbUrl;
       // Enable SSL if cloud database or explicitly required
-      if (DATABASE_URL.includes('sslmode=require') || 
-          DATABASE_URL.includes('supabase.co') || 
-          DATABASE_URL.includes('neon.tech') || 
-          DATABASE_URL.includes('render.com') || 
-          DATABASE_URL.includes('railway.app') || 
-          DATABASE_URL.includes('vercel-storage.com') ||
-          DATABASE_URL.includes('amazonaws.com')) {
+      if (dbUrl.includes('sslmode=require') || 
+          dbUrl.includes('supabase.co') || 
+          dbUrl.includes('neon.tech') || 
+          dbUrl.includes('render.com') || 
+          dbUrl.includes('railway.app') || 
+          dbUrl.includes('vercel-storage.com') ||
+          dbUrl.includes('amazonaws.com')) {
         config.ssl = { rejectUnauthorized: false };
       }
     } else {
