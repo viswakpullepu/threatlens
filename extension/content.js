@@ -1,7 +1,6 @@
 /**
  * ThreatLens AI — Live Gmail In-Mailbox Threat Shield
- * Persistent real-time threat score injection that stays active across all tab switches,
- * navigation, back-to-inbox actions, folder switching, and background tab returns.
+ * Clean, single-instance colored threat score injection next to sender names.
  */
 
 (function() {
@@ -19,7 +18,7 @@
     });
   }
 
-  console.log('[ThreatLens Shield] Persistent In-Mailbox Guardian active.');
+  console.log('[ThreatLens Shield] Single-instance Guardian active.');
 
   /**
    * Fast Threat Assessment Engine
@@ -109,26 +108,22 @@
   }
 
   /**
-   * INBOX LIST VIEW INJECTION:
-   * Checks the physical presence of .threatlens-number-badge so scores NEVER vanish when returning to inbox.
+   * INBOX LIST VIEW: Inject clean colored number right next to sender name
    */
   function injectBadgeIntoInboxRow(rowEl) {
     if (!isEnabled) return;
     
-    // If badge already exists in this row, skip
+    // Strict single-badge enforcement
     if (rowEl.querySelector('.threatlens-number-badge')) return;
 
-    // Locate sender container (.yW or td.yX)
     const senderContainer = rowEl.querySelector('.yW') || rowEl.querySelector('td.yX') || rowEl.querySelector('.yX');
     if (!senderContainer) return;
     if (senderContainer.querySelector('.threatlens-number-badge')) return;
 
-    // Locate sender name span (.bqe, .zF, .yP, span[email])
     const senderSpan = senderContainer.querySelector('span[email], span[name], .bqe, .zF, .yP, span') || senderContainer;
     const senderName = (senderSpan ? senderSpan.textContent.trim() : '') || senderContainer.textContent.trim();
     const senderEmail = (senderSpan ? (senderSpan.getAttribute('email') || senderSpan.getAttribute('name')) : '') || '';
 
-    // Extract subject & snippet
     const subjectEl = rowEl.querySelector('.bog, .bqr, .y6 span, [data-thread-id]');
     const subject = subjectEl ? subjectEl.textContent.trim() : '';
 
@@ -137,7 +132,6 @@
 
     if (!senderName && !subject) return;
 
-    // Fast Cache Evaluation
     const cacheKey = senderName + '_' + senderEmail + '_' + subject.slice(0, 30);
     let analysis = analyzedCache.get(cacheKey);
     if (!analysis) {
@@ -153,7 +147,9 @@
       scoreColorClass = 'tl-num-mild';
     }
 
-    // Create the pure colored score number
+    // Clean any prior duplicate
+    senderContainer.querySelectorAll('.threatlens-number-badge').forEach(function(b) { b.remove(); });
+
     const scoreSpan = document.createElement('span');
     scoreSpan.className = 'threatlens-number-badge ' + scoreColorClass;
     scoreSpan.title = 'ThreatLens AI Score: ' + score + '/100 (' + analysis.threatLevel + ')';
@@ -175,15 +171,20 @@
   }
 
   /**
-   * OPENED EMAIL VIEW INJECTION
+   * OPENED EMAIL VIEW: Inject exactly ONE badge next to the sender name in the open email header
    */
   function injectBadgeIntoOpenMessage(messageEl) {
     if (!isEnabled) return;
+    
+    // Strict single-badge enforcement per message card
     if (messageEl.querySelector('.threatlens-number-badge')) return;
 
     const senderEl = messageEl.querySelector('span[email], .gD, [email]');
     if (!senderEl) return;
-    if (senderEl.parentNode && senderEl.parentNode.querySelector('.threatlens-number-badge')) return;
+
+    const parent = senderEl.parentElement;
+    if (!parent) return;
+    if (parent.querySelector('.threatlens-number-badge')) return;
 
     const senderEmail = senderEl.getAttribute('email') || senderEl.textContent.trim();
     const senderName = senderEl.getAttribute('name') || senderEl.textContent.trim() || 'Sender';
@@ -207,45 +208,47 @@
       scoreColorClass = 'tl-num-mild';
     }
 
+    // Remove any stale badge in parent before appending
+    parent.querySelectorAll('.threatlens-number-badge').forEach(function(b) { b.remove(); });
+
     const scoreSpan = document.createElement('span');
     scoreSpan.className = 'threatlens-number-badge ' + scoreColorClass;
     scoreSpan.title = 'ThreatLens AI Score: ' + score + '/100 (' + analysis.threatLevel + ')';
     scoreSpan.textContent = ' [' + score + ']';
 
-    if (senderEl.parentNode) {
+    if (senderEl.nextSibling) {
+      senderEl.parentNode.insertBefore(scoreSpan, senderEl.nextSibling);
+    } else {
       senderEl.parentNode.appendChild(scoreSpan);
     }
   }
 
   /**
-   * Comprehensive DOM Scan
+   * Scan Gmail DOM without overlapping container collisions
    */
   function scanGmail() {
-    // 1. Scan Inbox Rows
-    const rows = document.querySelectorAll('tr.zA, tr.zE, tr.yO, [role="row"], table tbody tr');
+    // 1. Inbox Rows: exactly matches top-level table rows
+    const rows = document.querySelectorAll('tr.zA, tr.zE, tr.yO');
     for (let i = 0; i < rows.length; i++) {
       injectBadgeIntoInboxRow(rows[i]);
     }
 
-    // 2. Scan Opened Email Views
-    const messages = document.querySelectorAll('.adn.ads, .adn, [role="main"] .adn, .gE.iv.gt, div[data-message-id]');
+    // 2. Open Email Views: matches only the primary open message cards (.adn.ads or .adn)
+    const messages = document.querySelectorAll('.adn.ads, .adn');
     for (let i = 0; i < messages.length; i++) {
       injectBadgeIntoOpenMessage(messages[i]);
     }
   }
 
-  // Active MutationObserver
   const observer = new MutationObserver(function() {
     scanGmail();
   });
 
   observer.observe(document.body, { childList: true, subtree: true });
 
-  // Scan immediately and on recurring high-performance interval
   scanGmail();
   setInterval(scanGmail, 350);
 
-  // Hook all browser navigation, back-button, tab visibility, and window focus events
   window.addEventListener('focus', function() { scanGmail(); });
   document.addEventListener('visibilitychange', function() {
     if (!document.hidden) {
