@@ -837,12 +837,7 @@ async function analyzeEmail(rawInput, sourceName = 'inbox_stream.eml') {
   return parsedEmail;
 }
 
-// HTTP Server
-const server = http.createServer(async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
+// HTTP Request Handler
 export async function handleRequest(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
