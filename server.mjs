@@ -142,7 +142,7 @@ export async function saveSessionState(sessionId, tokens, user) {
  */
 export async function persistEmail(email, sessionId = 'default_client_session', ownerEmail = null) {
   const current = activeSessions.get(sessionId) || { tokens: null, user: null, emails: [] };
-  current.emails = [email, ...current.emails.filter(e => e.id !== email.id)].slice(0, 100);
+  current.emails = [email, ...current.emails.filter(e => e.id !== email.id)].slice(0, 1000);
   activeSessions.set(sessionId, current);
 
   const finalOwner = ownerEmail || current.user?.email || null;
@@ -320,24 +320,36 @@ export async function sendSecurityAlertEmail(accessToken, userEmail, email) {
 /**
  * Fast parallel Gmail sync with multi-user scoping and automated high-threat warning dispatch.
  */
-export async function syncGmailInbox(accessToken, sessionId = 'default_client_session', userEmail = null, limit = 15) {
+export async function syncGmailInbox(accessToken, sessionId = 'default_client_session', userEmail = null, limit = 50, pageToken = null) {
   try {
     const session = await getSessionState(sessionId);
     const existingEmails = session.emails || [];
 
     // 1. Fetch message IDs from user's primary inbox
-    const listRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${limit}&q=in:inbox`, {
+    let listUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${limit}&q=in:inbox`;
+    if (pageToken) listUrl += `&pageToken=${encodeURIComponent(pageToken)}`;
+
+    const listRes = await fetch(listUrl, {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
     
     if (listRes.status === 401) {
       const refreshedToken = await refreshGoogleAccessToken(session);
-      if (refreshedToken) return syncGmailInbox(refreshedToken, sessionId, userEmail, limit);
-      return [];
+      if (refreshedToken) return syncGmailInbox(refreshedToken, sessionId, userEmail, limit, pageToken);
+      const emptyRes = [];
+      emptyRes.nextPageToken = null;
+      return emptyRes;
     }
 
     const listData = await listRes.json();
-    if (!listData.messages || !Array.isArray(listData.messages)) return [];
+    const nextPageToken = listData.nextPageToken || null;
+    session.nextPageToken = nextPageToken;
+
+    if (!listData.messages || !Array.isArray(listData.messages)) {
+      const emptyRes = [];
+      emptyRes.nextPageToken = nextPageToken;
+      return emptyRes;
+    }
 
     // Filter unseen messages
     const unseenItems = listData.messages.filter(item => {
@@ -348,12 +360,16 @@ export async function syncGmailInbox(accessToken, sessionId = 'default_client_se
       );
     });
 
-    if (unseenItems.length === 0) return [];
+    if (unseenItems.length === 0) {
+      const noNew = [];
+      noNew.nextPageToken = nextPageToken;
+      return noNew;
+    }
 
     const newlyAnalyzed = [];
     
-    // Process in parallel batches of 5 for lightning-fast response
-    const BATCH_SIZE = 5;
+    // Process in parallel batches of 8 for lightning-fast high-volume response
+    const BATCH_SIZE = 8;
     for (let i = 0; i < unseenItems.length; i += BATCH_SIZE) {
       const batch = unseenItems.slice(i, i + BATCH_SIZE);
       const batchResults = await Promise.allSettled(batch.map(async (item) => {
@@ -365,7 +381,7 @@ export async function syncGmailInbox(accessToken, sessionId = 'default_client_se
         if (!msgData.raw) return null;
 
         const rawText = Buffer.from(msgData.raw, 'base64url').toString('utf8');
-        const analysis = await analyzeEmail(rawText, `gmail_${item.id}.eml`);
+        const analysis = await analyzeEmail(rawText, `gmail_${item.id}.eml`, sessionId, userEmail || session.user?.email);
         analysis.id = item.id;
         analysis.source = 'gmail_oauth_live';
         analysis.ownerEmail = userEmail || session.user?.email || null;
@@ -374,8 +390,8 @@ export async function syncGmailInbox(accessToken, sessionId = 'default_client_se
         await persistEmail(analysis, sessionId, analysis.ownerEmail);
 
         // Auto-dispatch critical warning email if Threat Score >= 75
-        if ((analysis.threatScore || 0) >= 75 && userEmail) {
-          sendSecurityAlertEmail(accessToken, userEmail, analysis).catch(() => {});
+        if ((analysis.threatScore || 0) >= 75 && (userEmail || session.user?.email)) {
+          sendSecurityAlertEmail(accessToken, userEmail || session.user?.email, analysis).catch(() => {});
         }
 
         return analysis;
@@ -388,10 +404,13 @@ export async function syncGmailInbox(accessToken, sessionId = 'default_client_se
       }
     }
 
+    newlyAnalyzed.nextPageToken = nextPageToken;
     return newlyAnalyzed;
   } catch (err) {
     console.error('[Gmail Sync Error]:', err.message);
-    return [];
+    const errRes = [];
+    errRes.nextPageToken = null;
+    return errRes;
   }
 }
 
@@ -1081,9 +1100,10 @@ export async function handleRequest(req, res) {
   if (req.method === 'GET' && pathname === '/api/emails') {
     const session = await getSessionState(sessionId);
     let emails = session.emails || [];
+    const limit = parseInt(url.searchParams.get('limit') || '1000', 10);
 
     if (isPostgresConfigured()) {
-      const dbEmails = await getEmailsFromDb(session.user?.email, sessionId, 100);
+      const dbEmails = await getEmailsFromDb(session.user?.email, sessionId, limit);
       if (Array.isArray(dbEmails)) {
         emails = dbEmails;
         session.emails = dbEmails;
@@ -1091,7 +1111,13 @@ export async function handleRequest(req, res) {
     }
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ emails, sessionId, user: session.user }));
+    res.end(JSON.stringify({ 
+      emails, 
+      sessionId, 
+      user: session.user, 
+      total: emails.length,
+      nextPageToken: session.nextPageToken || null
+    }));
     return;
   }
 
@@ -1123,8 +1149,8 @@ export async function handleRequest(req, res) {
         const userProfile = await fetchGoogleUserProfile(tokens.access_token);
         await saveSessionState(stateSessionId, tokens, userProfile);
 
-        // Immediately auto-sync recent inbound messages for this user
-        const synced = await syncGmailInbox(tokens.access_token, stateSessionId, userProfile?.email, 15);
+        // Immediately auto-sync recent inbound messages for this user (up to 50 messages)
+        const synced = await syncGmailInbox(tokens.access_token, stateSessionId, userProfile?.email, 50);
         console.log(`[ThreatLens OAuth] Successfully connected ${userProfile?.email || 'Gmail'} for session [${stateSessionId}]. Analyzed ${synced.length} emails.`);
 
         // Set persistent session cookie (30 days)
@@ -1154,6 +1180,7 @@ export async function handleRequest(req, res) {
       user: session.user,
       sessionId: sessionId,
       totalEmailsAnalyzed: (session.emails || []).length,
+      nextPageToken: session.nextPageToken || null,
       database: dbHealth
     }));
     return;
@@ -1168,7 +1195,10 @@ export async function handleRequest(req, res) {
     }
 
     try {
-      const newItems = await syncGmailInbox(session.tokens.access_token, sessionId, session.user?.email, 15);
+      const requestedLimit = parseInt(url.searchParams.get('limit') || '50', 10);
+      const requestedPageToken = url.searchParams.get('pageToken') || null;
+      const newItems = await syncGmailInbox(session.tokens.access_token, sessionId, session.user?.email, requestedLimit, requestedPageToken);
+      
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ 
         success: true, 
@@ -1177,7 +1207,8 @@ export async function handleRequest(req, res) {
         newEmails: newItems,
         emails: session.emails || [],
         user: session.user,
-        sessionId: sessionId
+        sessionId: sessionId,
+        nextPageToken: newItems.nextPageToken || session.nextPageToken || null
       }));
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json' });

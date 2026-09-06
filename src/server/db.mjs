@@ -210,7 +210,7 @@ export async function saveEmailToDb(email, ownerEmail = null, sessionId = null) 
 /**
  * Retrieves analyzed emails strictly for the authenticated user/session.
  */
-export async function getEmailsFromDb(ownerEmail = null, sessionId = null, limit = 100) {
+export async function getEmailsFromDb(ownerEmail = null, sessionId = null, limit = 1000) {
   const p = getPool();
   if (!p) return null;
 

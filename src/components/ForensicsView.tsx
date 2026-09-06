@@ -24,7 +24,13 @@ import {
   Radio,
   Mail,
   Lock,
-  LogOut
+  LogOut,
+  Search,
+  Filter,
+  Layers,
+  Inbox,
+  Sparkles,
+  ChevronRight
 } from 'lucide-react';
 import { ForensicReportModal } from './ForensicReportModal';
 import { parseEmailForensics } from '../engine/emailParser';
@@ -51,17 +57,24 @@ export const ForensicsView: React.FC = () => {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [oauthStatus, setOauthStatus] = useState<{ connected: boolean; user?: any; provider?: string } | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [nextPageToken, setNextPageToken] = useState<string | null>(null);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  
+  // Real-time search & filter pills
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterCategory, setFilterCategory] = useState<'all' | 'critical' | 'mild' | 'safe'>('all');
 
   const refreshEmailsFromBackend = async () => {
     try {
       const sid = getOrCreateSessionId();
-      const res = await fetch(`/api/emails?session_id=${encodeURIComponent(sid)}`, {
+      const res = await fetch(`/api/emails?session_id=${encodeURIComponent(sid)}&limit=1000`, {
         headers: { 'x-session-id': sid }
       });
       const data = await res.json();
       if (data.emails && Array.isArray(data.emails)) {
         setCustomEmails(data.emails);
+        if (data.nextPageToken) setNextPageToken(data.nextPageToken);
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data.emails)); } catch (_) {}
         if (data.emails[0] && !selectedEmail) setSelectedEmail(data.emails[0]);
       }
@@ -76,6 +89,7 @@ export const ForensicsView: React.FC = () => {
       });
       const data = await res.json();
       setOauthStatus(data);
+      if (data.nextPageToken) setNextPageToken(data.nextPageToken);
     } catch (_) {}
   };
 
@@ -118,12 +132,13 @@ export const ForensicsView: React.FC = () => {
     setIsSyncing(true);
     try {
       const sid = getOrCreateSessionId();
-      const res = await fetch(`/api/auth/google/sync?session_id=${encodeURIComponent(sid)}`, { 
+      const res = await fetch(`/api/auth/google/sync?session_id=${encodeURIComponent(sid)}&limit=50`, { 
         method: 'POST',
         headers: { 'x-session-id': sid }
       });
       const data = await res.json();
       if (data.success) {
+        if (data.nextPageToken !== undefined) setNextPageToken(data.nextPageToken);
         setSyncMessage(`✅ Synced ${data.newCount || data.count} new messages from ${data.user?.email || 'Gmail'}!`);
         await refreshEmailsFromBackend();
       } else {
@@ -134,6 +149,45 @@ export const ForensicsView: React.FC = () => {
     }
     setIsSyncing(false);
     setTimeout(() => setSyncMessage(null), 5000);
+  };
+
+  const handleLoadMoreGmail = async () => {
+    if (isLoadingMore || isSyncing) return;
+    setIsLoadingMore(true);
+    try {
+      const sid = getOrCreateSessionId();
+      let url = `/api/auth/google/sync?session_id=${encodeURIComponent(sid)}&limit=50`;
+      if (nextPageToken) url += `&pageToken=${encodeURIComponent(nextPageToken)}`;
+      
+      const res = await fetch(url, { 
+        method: 'POST',
+        headers: { 'x-session-id': sid }
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (data.nextPageToken !== undefined) setNextPageToken(data.nextPageToken);
+        if (data.emails && Array.isArray(data.emails)) {
+          setCustomEmails(data.emails);
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data.emails)); } catch (_) {}
+        }
+        setSyncMessage(`📥 Ingested ${data.newCount || 0} more emails. Total: ${(data.emails || []).length}`);
+      } else {
+        setSyncMessage(data.error || 'All accessible messages ingested.');
+      }
+    } catch (e) {
+      setSyncMessage('⚠️ Error fetching more messages');
+    }
+    setIsLoadingMore(false);
+    setTimeout(() => setSyncMessage(null), 5000);
+  };
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    if (target.scrollHeight - target.scrollTop - target.clientHeight < 60) {
+      if (oauthStatus?.connected && !isSyncing && !isLoadingMore && nextPageToken) {
+        handleLoadMoreGmail();
+      }
+    }
   };
 
   const handleDisconnect = async () => {
@@ -147,6 +201,7 @@ export const ForensicsView: React.FC = () => {
       setOauthStatus({ connected: false });
       setCustomEmails([]);
       setSelectedEmail(null);
+      setNextPageToken(null);
       try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
       setSyncMessage('Disconnected Gmail account');
       setTimeout(() => setSyncMessage(null), 3000);
@@ -154,7 +209,32 @@ export const ForensicsView: React.FC = () => {
   };
 
   const allEmails = customEmails;
-  const currentEmail = selectedEmail || allEmails[0] || null;
+  
+  // Filter emails according to search query and category
+  const filteredEmails = allEmails.filter((email) => {
+    const score = email.threatScore ?? 0;
+    if (filterCategory === 'critical' && score <= 80) return false;
+    if (filterCategory === 'mild' && (score < 50 || score > 80)) return false;
+    if (filterCategory === 'safe' && score >= 50) return false;
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const subject = (email.title || email.metadata?.subject || '').toLowerCase();
+      const sender = (email.sender?.email || email.sender?.name || '').toLowerCase();
+      const id = String(email.id || '').toLowerCase();
+      const type = (email.threatVerdict?.headline || email.userFriendlyCategory || '').toLowerCase();
+      if (!subject.includes(q) && !sender.includes(q) && !id.includes(q) && !type.includes(q)) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  const criticalCount = allEmails.filter((e) => (e.threatScore ?? 0) > 80).length;
+  const mildCount = allEmails.filter((e) => (e.threatScore ?? 0) >= 50 && (e.threatScore ?? 0) <= 80).length;
+  const safeCount = allEmails.filter((e) => (e.threatScore ?? 0) < 50).length;
+
+  const currentEmail = selectedEmail || filteredEmails[0] || allEmails[0] || null;
   const isThreat = currentEmail?.isThreat || false;
 
   const saveAndSelectEmail = (email: any) => {
@@ -170,6 +250,7 @@ export const ForensicsView: React.FC = () => {
     if (!confirm('Clear all ingested and analyzed emails?')) return;
     setCustomEmails([]);
     setSelectedEmail(null);
+    setNextPageToken(null);
     try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
   };
 
@@ -232,10 +313,10 @@ export const ForensicsView: React.FC = () => {
               <span className="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs flex items-center justify-center font-bold">
                 1
               </span>
-              Ingest & Inspect Live Emails via OAuth
+              Ingest & Inspect Live Mailbox Stream
             </h2>
             <p className="text-xs text-slate-500">
-              Connect your live Gmail inbox via OAuth2, upload .EML raw files, or paste email RFC-822 headers
+              Complete mailbox forensic index • Seamless continuous scroll • Real-time AI threat classification
             </p>
           </div>
 
@@ -299,44 +380,180 @@ export const ForensicsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Real Ingested Emails Grid */}
+        {/* Real Ingested Emails Stream with Search, Filter Pills & Seamless Scroll */}
         {allEmails.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {allEmails.map((sample) => {
-              const isSelected = currentEmail?.id === sample.id;
-              const score = sample.threatScore ?? 0;
-              const badgeClass = score > 80 
-                ? 'bg-red-100 text-red-700' 
-                : (score >= 50 ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700');
-              return (
-                <div
-                  key={sample.id}
-                  onClick={() => setSelectedEmail(sample)}
-                  className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${
-                    isSelected
-                      ? 'bg-white border-indigo-600 ring-2 ring-indigo-500/20 shadow-sm'
-                      : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-2xs'
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3">
+            {/* Search & Filter Header Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+              {/* Search Box */}
+              <div className="relative flex-1 max-w-md">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search emails by subject, sender, or case ID..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-8 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800 placeholder-slate-400"
+                />
+                {searchQuery && (
+                  <button 
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* Category Filter Pills & Counter */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  onClick={() => setFilterCategory('all')}
+                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    filterCategory === 'all'
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${badgeClass}`}>
-                        {sample.shortBadge || (score > 80 ? '🚨 Critical' : (score >= 50 ? '⚠️ Mild' : '✅ Safe'))}
-                      </span>
-                      <span className="text-[10px] font-mono text-slate-400">
-                        Score: {sample.threatScore}
-                      </span>
-                    </div>
-                    <h4 className="text-xs font-bold text-slate-900 line-clamp-2">
-                      {sample.title || sample.metadata?.subject}
-                    </h4>
-                  </div>
-                  <div className="pt-2 text-[10px] font-mono text-slate-400 border-t border-slate-100 mt-2 truncate">
-                    {sample.sender?.email || 'email-source'}
-                  </div>
+                  All ({allEmails.length})
+                </button>
+                <button
+                  onClick={() => setFilterCategory('critical')}
+                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                    filterCategory === 'critical'
+                      ? 'bg-red-600 text-white shadow-xs'
+                      : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200/60'
+                  }`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                  Critical ({criticalCount})
+                </button>
+                <button
+                  onClick={() => setFilterCategory('mild')}
+                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                    filterCategory === 'mild'
+                      ? 'bg-orange-600 text-white shadow-xs'
+                      : 'bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200/60'
+                  }`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                  Mild ({mildCount})
+                </button>
+                <button
+                  onClick={() => setFilterCategory('safe')}
+                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                    filterCategory === 'safe'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/60'
+                  }`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  Safe ({safeCount})
+                </button>
+
+                {oauthStatus?.connected && (
+                  <button
+                    onClick={handleLoadMoreGmail}
+                    disabled={isLoadingMore || isSyncing}
+                    className="ml-auto sm:ml-2 px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl border border-indigo-200 transition-all flex items-center gap-1.5 cursor-pointer"
+                    title="Load more historical emails from your Gmail inbox"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isLoadingMore || isSyncing ? 'animate-spin' : ''}`} />
+                    <span>{isLoadingMore ? 'Fetching...' : 'Fetch More'}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Scrollable Feed Container (Shows every email on scroll) */}
+            <div 
+              onScroll={handleScroll}
+              className="max-h-[440px] overflow-y-auto pr-1 space-y-2.5 custom-scrollbar"
+              style={{ scrollBehavior: 'smooth' }}
+            >
+              {filteredEmails.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  {filteredEmails.map((sample) => {
+                    const isSelected = currentEmail?.id === sample.id;
+                    const score = sample.threatScore ?? 0;
+                    const badgeClass = score > 80 
+                      ? 'bg-red-100 text-red-700 border-red-200' 
+                      : (score >= 50 ? 'bg-orange-100 text-orange-700 border-orange-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200');
+                    const dotColor = score > 80 ? 'bg-red-500' : (score >= 50 ? 'bg-orange-500' : 'bg-emerald-500');
+
+                    return (
+                      <div
+                        key={sample.id}
+                        onClick={() => setSelectedEmail(sample)}
+                        className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between group ${
+                          isSelected
+                            ? 'bg-indigo-50/70 border-indigo-600 ring-2 ring-indigo-500/20 shadow-sm'
+                            : 'bg-slate-50/50 hover:bg-white border-slate-200 hover:border-slate-300 hover:shadow-2xs'
+                        }`}
+                      >
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${badgeClass}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
+                              {sample.shortBadge || (score > 80 ? '🚨 Critical' : (score >= 50 ? '⚠️ Mild' : '✅ Safe'))}
+                            </span>
+                            <span className="text-[10px] font-mono text-slate-400 font-bold">
+                              {sample.threatScore}/100
+                            </span>
+                          </div>
+
+                          <h4 className="text-xs font-bold text-slate-900 line-clamp-2 leading-snug group-hover:text-indigo-600 transition-colors">
+                            {sample.title || sample.metadata?.subject || '(No Subject)'}
+                          </h4>
+
+                          <p className="text-[11px] text-slate-500 line-clamp-1 font-mono truncate">
+                            {sample.sender?.name ? `${sample.sender.name} <${sample.sender.email}>` : (sample.sender?.email || 'email-source')}
+                          </p>
+                        </div>
+
+                        <div className="pt-2 text-[10px] text-slate-400 border-t border-slate-200/60 mt-2.5 flex items-center justify-between">
+                          <span className="font-mono">{sample.metadata?.date ? sample.metadata.date.split(' ').slice(0, 4).join(' ') : 'Recent'}</span>
+                          {isSelected && (
+                            <span className="text-indigo-600 font-bold text-[10px] flex items-center gap-0.5">
+                              Inspecting <ChevronRight className="w-3 h-3" />
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
+              ) : (
+                <div className="p-8 text-center text-slate-500 text-xs">
+                  No emails match your filter or search query "{searchQuery}".
+                </div>
+              )}
+
+              {/* In-feed status indicator & bottom fetch loader */}
+              <div className="pt-3 pb-1 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
+                <span className="font-mono text-[11px]">
+                  Showing {filteredEmails.length} of {allEmails.length} indexed emails
+                </span>
+                {isLoadingMore ? (
+                  <div className="flex items-center gap-2 text-indigo-600 font-bold text-xs">
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Loading more emails from your mailbox...</span>
+                  </div>
+                ) : nextPageToken && oauthStatus?.connected ? (
+                  <button
+                    onClick={handleLoadMoreGmail}
+                    className="text-indigo-600 hover:text-indigo-800 font-bold text-xs underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>Scroll down or click here to load more from Gmail</span>
+                    <ChevronRight className="w-3 h-3" />
+                  </button>
+                ) : (
+                  <span className="text-[11px] text-emerald-600 font-medium">
+                    ✓ All accessible mailbox items analyzed and visible
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
         ) : (
           <div className="bg-white border border-dashed border-slate-300 rounded-3xl p-10 text-center shadow-xs">
