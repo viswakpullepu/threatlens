@@ -31,22 +31,52 @@ print(f"Loaded template with {len(prs.slides)} slides.")
 # HELPER: Update Team Name badge on all content slides
 # -------------------------------------------------------------
 def update_team_badge(slide, team_text="CyberCore"):
+    found = False
     for s in slide.shapes:
         if "Oval" in s.name and s.has_text_frame:
+            found = True
+            s.left = Inches(0.36)
+            s.top = Inches(0.28)
+            s.width = Inches(1.37)
+            s.height = Inches(0.88)
+            s.fill.solid()
+            s.fill.fore_color.rgb = COLOR_NAVY
+            s.line.color.rgb = COLOR_ORANGE
+            s.line.width = Pt(2)
             tf = s.text_frame
             tf.word_wrap = True
-            for p in tf.paragraphs:
-                p.text = team_text
-                p.font.name = FONT_HEAD
-                p.font.size = Pt(11)
-                p.font.bold = True
-                p.font.color.rgb = COLOR_WHITE
-                p.alignment = PP_ALIGN.CENTER
+            tf.clear()
+            p = tf.paragraphs[0]
+            p.text = team_text
+            p.font.name = FONT_HEAD
+            p.font.size = Pt(11.5)
+            p.font.bold = True
+            p.font.color.rgb = COLOR_WHITE
+            p.alignment = PP_ALIGN.CENTER
+
+    if not found:
+        # Add oval if slide doesn't have one (Slide 1)
+        s = slide.shapes.add_shape(MSO_SHAPE.OVAL, Inches(0.36), Inches(0.28), Inches(1.37), Inches(0.88))
+        s.name = "Oval Team"
+        s.fill.solid()
+        s.fill.fore_color.rgb = COLOR_NAVY
+        s.line.color.rgb = COLOR_ORANGE
+        s.line.width = Pt(2)
+        tf = s.text_frame
+        tf.word_wrap = True
+        p = tf.paragraphs[0]
+        p.text = team_text
+        p.font.name = FONT_HEAD
+        p.font.size = Pt(11.5)
+        p.font.bold = True
+        p.font.color.rgb = COLOR_WHITE
+        p.alignment = PP_ALIGN.CENTER
 
 # -------------------------------------------------------------
 # SLIDE 1: TITLE PAGE & PROBLEM ANALYSIS (ZERO TECH NAMES)
 # -------------------------------------------------------------
 slide1 = prs.slides[0]
+update_team_badge(slide1, "CyberCore")
 
 # Update Subtitle placeholder
 for s in slide1.shapes:
@@ -647,8 +677,15 @@ if len(prs.slides) > 6:
 
 # Save presentation
 prs.save(DEST_OUTPUT)
+CYBERCORE_COPY = r'C:\Users\vishw\Downloads\SIH2026_ThreatLens_CyberCore_Submission.pptx'
+try:
+    shutil.copyfile(DEST_OUTPUT, CYBERCORE_COPY)
+    print(f"Presentation saved to: {CYBERCORE_COPY}")
+except PermissionError:
+    pass
+
 try:
     shutil.copyfile(DEST_OUTPUT, BACKUP_DOWNLOADS)
-    print(f"Presentation successfully saved to:\n1. {DEST_OUTPUT}\n2. {BACKUP_DOWNLOADS}")
+    print(f"Presentation saved to: {BACKUP_DOWNLOADS}")
 except PermissionError:
-    print(f"Presentation saved to {DEST_OUTPUT}. (Downloads copy was locked in PowerPoint)")
+    print(f"Presentation saved to {DEST_OUTPUT}. (Downloads original was open in PowerPoint)")
