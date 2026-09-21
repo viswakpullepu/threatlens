@@ -38,10 +38,10 @@ def apply_top_left_oval_badge(slide, slide_num):
             sp_elem = s._element
             sp_elem.getparent().remove(sp_elem)
 
-    # 2. Add brand-new high-contrast Oval at Top-Left
+    # 2. Add brand-new high-contrast Oval at Top-Left with ample single-line width
     oval = slide.shapes.add_shape(
         MSO_SHAPE.OVAL,
-        Inches(0.36), Inches(0.20), Inches(1.55), Inches(0.92)
+        Inches(0.36), Inches(0.20), Inches(1.85), Inches(0.85)
     )
     oval.name = f"Oval CyberCore Slide {slide_num}"
     oval.fill.solid()
@@ -50,14 +50,18 @@ def apply_top_left_oval_badge(slide, slide_num):
     oval.line.width = Pt(2.5)
 
     tf = oval.text_frame
-    tf.word_wrap = True
+    tf.word_wrap = False
+    tf.margin_left = Inches(0.04)
+    tf.margin_right = Inches(0.04)
+    tf.margin_top = Inches(0.04)
+    tf.margin_bottom = Inches(0.04)
     tf.clear()
     p = tf.paragraphs[0]
     p.alignment = PP_ALIGN.CENTER
     run = p.add_run()
     run.text = "CyberCore"
     run.font.name = FONT_HEAD
-    run.font.size = Pt(13)
+    run.font.size = Pt(11.5)
     run.font.bold = True
     run.font.color.rgb = COLOR_WHITE
     return oval
@@ -70,14 +74,14 @@ slide1 = prs.slides[0]
 # Adjust Title 7 and Subtitle 3 so they don't collide with top-left oval
 for s in slide1.shapes:
     if s.name == "Title 7":
-        s.left = Inches(2.1)
+        s.left = Inches(2.35)
         s.top = Inches(0.0)
-        s.width = Inches(8.5)
+        s.width = Inches(8.3)
         s.height = Inches(1.0)
     elif s.name == "Subtitle 3":
-        s.left = Inches(2.1)
+        s.left = Inches(2.35)
         s.top = Inches(0.95)
-        s.width = Inches(8.5)
+        s.width = Inches(8.3)
         s.height = Inches(0.5)
         if s.has_text_frame:
             tf = s.text_frame
@@ -190,12 +194,12 @@ print("Slide 1 processed.")
 for idx in range(1, 6):
     slide = prs.slides[idx]
     
-    # 1. Adjust Title 1 to start at x=2.1 so it never collides with the top-left oval
+    # 1. Adjust Title 1 to start at x=2.35 so it never collides with the top-left oval
     for s in slide.shapes:
         if s.name == "Title 1":
-            s.left = Inches(2.1)
+            s.left = Inches(2.35)
             s.top = Inches(0.15)
-            s.width = Inches(8.4)
+            s.width = Inches(8.2)
             s.height = Inches(1.0)
             
     # 2. Add high-contrast top-left CyberCore oval
