@@ -30,7 +30,7 @@ print(f"Loaded template with {len(prs.slides)} slides.")
 # -------------------------------------------------------------
 # HELPER: Update Team Name badge on all content slides
 # -------------------------------------------------------------
-def update_team_badge(slide, team_text="Team Cyber Core"):
+def update_team_badge(slide, team_text="CyberCore"):
     for s in slide.shapes:
         if "Oval" in s.name and s.has_text_frame:
             tf = s.text_frame
@@ -96,7 +96,7 @@ if tb9 and tb9.has_text_frame:
     add_meta_line("Problem Statement Title", "AI-Powered Email Threat Detection, Geolocation and Forensic Intelligence")
     add_meta_line("Theme", "Cyber Security / Smart Automation")
     add_meta_line("PS Category", "Software")
-    add_meta_line("Team Name", "Team Cyber Core (CVR College of Engineering)")
+    add_meta_line("Team Name", "CyberCore (CVR College of Engineering)")
     add_meta_line("Team ID", "[Registered on SIH Portal]")
 
     # Live Prototype Callout
@@ -629,7 +629,7 @@ if tb_s6 and tb_s6.has_text_frame:
 
     p_team_b = tf.add_paragraph()
     r_teamb = p_team_b.add_run()
-    r_teamb.text = "Engineered by Team Cyber Core, Department of CSE (Cyber Security), CVR College of Engineering. Built from direct frontline research into the practical pain points of SOC analysts and Indian law enforcement, prioritizing zero-trust data privacy, parsimonious execution, and actionable operational defense over theoretical complexity."
+    r_teamb.text = "Engineered by Team CyberCore, Department of CSE (Cyber Security), CVR College of Engineering. Built from direct frontline research into the practical pain points of SOC analysts and Indian law enforcement, prioritizing zero-trust data privacy, parsimonious execution, and actionable operational defense over theoretical complexity."
     r_teamb.font.name = FONT_BODY
     r_teamb.font.size = Pt(9.5)
     r_teamb.font.color.rgb = COLOR_DARK
@@ -647,5 +647,8 @@ if len(prs.slides) > 6:
 
 # Save presentation
 prs.save(DEST_OUTPUT)
-shutil.copyfile(DEST_OUTPUT, BACKUP_DOWNLOADS)
-print(f"Presentation successfully saved to:\n1. {DEST_OUTPUT}\n2. {BACKUP_DOWNLOADS}")
+try:
+    shutil.copyfile(DEST_OUTPUT, BACKUP_DOWNLOADS)
+    print(f"Presentation successfully saved to:\n1. {DEST_OUTPUT}\n2. {BACKUP_DOWNLOADS}")
+except PermissionError:
+    print(f"Presentation saved to {DEST_OUTPUT}. (Downloads copy was locked in PowerPoint)")
