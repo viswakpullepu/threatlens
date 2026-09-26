@@ -928,6 +928,13 @@ export async function analyzeEmail(rawInput, sourceName = 'inbox_stream.eml', se
     }
   }
 
+  // 4. Executive / VIP Title Masquerading (Enterprise BEC vector)
+  const isExecutiveTitle = /\b(ceo|cfo|coo|chief executive|chief financial|president|managing director|executive director|payroll director)\b/i.test(senderDisplayName);
+  if (!isSpoofed && isExecutiveTitle && !isTrustedCleanDomain) {
+    isSpoofed = true;
+    spoofDetail = `VIP / Executive Impersonation: Displays title "${senderDisplayName}" from external domain "${senderDomain}"`;
+  }
+
   // Strict: Reply-To Address Divergence ONLY applies if an explicit header was supplied and differs from sender on non-trusted domain
   let hasReplyToDivergence = false;
   if (!isSpoofed && headers['reply-to'] && replyDomain !== senderDomain && !replyToEmail.includes(senderDomain) && replyToEmail !== senderEmail) {
@@ -1180,7 +1187,7 @@ export async function analyzeEmail(rawInput, sourceName = 'inbox_stream.eml', se
     hasExtortion = true;
     nlpDetails.push('Extortion / Blackmail intimidation syntax (+20)');
   }
-  if (/(urgent wire transfer|updated direct deposit|swift wire|gift card purchase|urgent payroll update|overdue invoice payment)/i.test(cleanText)) {
+  if (/(urgent wire transfer|wire transfer|updated direct deposit|swift wire|gift card purchase|urgent payroll update|overdue invoice payment|wire funds)/i.test(cleanText)) {
     vNlp += 18;
     hasBecWire = true;
     nlpDetails.push('Business Email Compromise (BEC) wire redirection syntax (+18)');
@@ -1214,9 +1221,12 @@ export async function analyzeEmail(rawInput, sourceName = 'inbox_stream.eml', se
   // SYNERGY MULTIPLIERS (Compound Vector Interactions)
   // ----------------------------------------------------
   let synergyScore = 0;
-  if (isTyposquat && hasBecWire) {
+  if ((isTyposquat || isSpoofed) && hasBecWire) {
     synergyScore += 25;
-    synergyDetails.push('Compound Attack: Lookalike domain coupled with wire fraud directive (+25)');
+    synergyDetails.push('Compound Attack: Executive/Brand Impersonation coupled with wire fraud directive (+25)');
+  } else if (hasBecWire && !isTrustedCleanDomain) {
+    synergyScore += 18;
+    synergyDetails.push('High-Risk Financial Directive: Wire transfer instruction from external unverified domain (+18)');
   }
   if (isSpoofed && hasReplyToDivergence) {
     synergyScore += 20;
