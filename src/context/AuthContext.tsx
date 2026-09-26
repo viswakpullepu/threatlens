@@ -80,15 +80,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(data.user));
         } catch (_) {}
       } else {
-        if (!data.connected) {
-          const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-          if (params?.get('connected') !== 'gmail') {
-            const cached = localStorage.getItem(USER_STORAGE_KEY);
-            if (!cached) {
-              setUser(null);
-              setIsAuthenticated(false);
-            }
+        // If backend session expired or in-flight, check persistent client storage
+        const cached = typeof window !== 'undefined' ? localStorage.getItem(USER_STORAGE_KEY) : null;
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            setUser(parsed);
+            setIsAuthenticated(true);
+          } catch (_) {
+            setUser(null);
+            setIsAuthenticated(false);
           }
+        } else {
+          setUser(null);
+          setIsAuthenticated(false);
         }
       }
     } catch (err) {

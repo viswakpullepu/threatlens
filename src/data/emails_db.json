@@ -1,26 +1,388 @@
 [
   {
-    "id": "eml-muimtxk9",
-    "title": "URGENT: Your PayPal Account Has Been Suspended!",
+    "id": "eml-muinonak",
+    "title": "Security alert: new device signed in to your Google Account",
+    "shortBadge": "✅ 100% Safe",
+    "userFriendlyCategory": "Clean Authentic Electronic Mail",
+    "threatScore": 0,
+    "severity": "safe",
+    "severityLabel": "100% Safe & Verified (Green)",
+    "isThreat": false,
+    "simpleTakeaway": "Email is authentic and verified safe (Score: 0/100) from official Google infrastructure. Cryptographic signatures and DNS authentication passed.",
+    "whatHappened": [
+      "Sender: no-reply@accounts.google.com (Google)",
+      "Live DNS checks: SPF=PASS, DKIM=PASS, DMARC=PASS",
+      "Extracted 2 link(s) and 0 attachment(s).",
+      "Forensic Vector Breakdown: Auth=0/15, Identity=0/25, URLs=0/25, Attachments=0/25, Semantics=0/20 | Trust Credits=-43"
+    ],
+    "scoringBreakdown": {
+      "authentication": {
+        "score": 0,
+        "max": 15,
+        "details": []
+      },
+      "identity": {
+        "score": 0,
+        "max": 25,
+        "details": []
+      },
+      "urls": {
+        "score": 0,
+        "max": 25,
+        "details": []
+      },
+      "attachments": {
+        "score": 0,
+        "max": 25,
+        "details": []
+      },
+      "semantics": {
+        "score": 0,
+        "max": 20,
+        "details": []
+      },
+      "synergy": {
+        "score": 0,
+        "details": []
+      },
+      "trustCredits": {
+        "score": 43,
+        "details": [
+          "Verified Google Official Infrastructure (SPF/DKIM/DMARC Pass) (-35)",
+          "Active Mail Exchangers & Established Domain Reputation (-8)"
+        ]
+      },
+      "finalThreatScore": 0,
+      "hardOverrideTriggered": false,
+      "hardOverrideReason": ""
+    },
+    "whatToDo": "Safe to read and deliver to user inbox.",
+    "sender": {
+      "displayName": "Google",
+      "email": "no-reply@accounts.google.com",
+      "envelopeFrom": "no-reply@accounts.google.com",
+      "replyTo": "no-reply@accounts.google.com",
+      "originIp": "192.178.211.84",
+      "asn": "AS15169 Google LLC",
+      "location": "Mountain View, United States",
+      "lat": 37.4225,
+      "lng": -122.085,
+      "reverseDns": "lcbomp-in-f84.1e100.net",
+      "isSpoofed": false,
+      "spoofType": "Verified Official Google Infrastructure"
+    },
+    "recipient": {
+      "email": "user@enterprise.com",
+      "department": "Enterprise Security Posture",
+      "targetHost": "mx1.enterprise.local"
+    },
+    "metadata": {
+      "subject": "Security alert: new device signed in to your Google Account",
+      "date": "Fri, 26 Sep 2026 12:00:00 +0000",
+      "messageId": "<CA+12345@mail.gmail.com>",
+      "userAgent": "Standard Enterprise Mailer",
+      "contentType": "text/html; charset=UTF-8"
+    },
+    "auth": {
+      "spf": {
+        "status": "PASS",
+        "exists": true,
+        "friendlyName": "SPF (Sender Identity Check)",
+        "explanation": "Queries authoritative DNS TXT records to verify if the sending IP is authorized.",
+        "message": "Authenticated via SPF check for accounts.google.com"
+      },
+      "dkim": {
+        "status": "PASS",
+        "exists": true,
+        "friendlyName": "DKIM (Cryptographic Anti-Tamper Seal)",
+        "explanation": "Validates public key cryptographic signature against sender domain DNS.",
+        "message": "DKIM cryptographic signature verified for accounts.google.com"
+      },
+      "dmarc": {
+        "status": "PASS",
+        "exists": true,
+        "friendlyName": "DMARC (Domain Rule Alignment)",
+        "explanation": "Enforces domain policy for SPF/DKIM alignment and recipient protection.",
+        "message": "DMARC alignment verified for accounts.google.com"
+      }
+    },
+    "urls": [
+      {
+        "url": "https://myaccount.google.com/notifications",
+        "domain": "myaccount.google.com",
+        "risk": "Low",
+        "vtScore": "0/89 Clean (Verified Host)",
+        "ip": "192.178.211.84",
+        "domainAge": "Verified Enterprise Host",
+        "isPunycode": false
+      },
+      {
+        "url": "https://accounts.google.com",
+        "domain": "accounts.google.com",
+        "risk": "Low",
+        "vtScore": "0/89 Clean (Verified Host)",
+        "ip": "192.178.211.84",
+        "domainAge": "Verified Enterprise Host",
+        "isPunycode": false
+      }
+    ],
+    "attachments": [],
+    "hashes": {
+      "sha256": "7811c21a075651a1a02468bbac60cf49852ad5236ad29bbcef00bcf80a7379bb",
+      "md5": "c498076aba0f05ce7fb14730e2b03d0d"
+    },
+    "threatVerdict": {
+      "headline": "Authentic Electronic Message",
+      "confidence": 98.6,
+      "analysis": [
+        "Sender identity \"no-reply@accounts.google.com\" cross-referenced with live DNS records.",
+        "Cryptographic posture: SPF PASS | DKIM PASS | DMARC PASS.",
+        "Extracted 2 web links and 0 attachments scanned."
+      ],
+      "recommendation": "Deliver to user inbox."
+    },
+    "timeline": [
+      {
+        "time": "T+0ms",
+        "event": "Inbound connection parsed from 192.178.211.84",
+        "status": "info"
+      },
+      {
+        "time": "T+5ms",
+        "event": "Authoritative DNS resolution (SPF/DMARC): PASS/PASS",
+        "status": "success"
+      },
+      {
+        "time": "T+12ms",
+        "event": "Heuristic 200+ threat matrix score: 0/100",
+        "status": "success"
+      }
+    ],
+    "mitreAttack": []
+  },
+  {
+    "id": "eml-muinopdf",
+    "title": "Receipt for your monthly subscription payment #INV-92841",
+    "shortBadge": "✅ 100% Safe",
+    "userFriendlyCategory": "Clean Authentic Electronic Mail",
+    "threatScore": 0,
+    "severity": "safe",
+    "severityLabel": "100% Safe & Verified (Green)",
+    "isThreat": false,
+    "simpleTakeaway": "Email is authentic and verified safe (Score: 0/100) from \"stripe.com\". Live DNS authentication passed.",
+    "whatHappened": [
+      "Sender: invoice+statements@stripe.com (Stripe)",
+      "Live DNS checks: SPF=PASS, DKIM=PASS, DMARC=PASS",
+      "Extracted 1 link(s) and 0 attachment(s).",
+      "Forensic Vector Breakdown: Auth=0/15, Identity=0/25, URLs=0/25, Attachments=0/25, Semantics=0/20 | Trust Credits=-50"
+    ],
+    "scoringBreakdown": {
+      "authentication": {
+        "score": 0,
+        "max": 15,
+        "details": []
+      },
+      "identity": {
+        "score": 0,
+        "max": 25,
+        "details": []
+      },
+      "urls": {
+        "score": 0,
+        "max": 25,
+        "details": []
+      },
+      "attachments": {
+        "score": 0,
+        "max": 25,
+        "details": []
+      },
+      "semantics": {
+        "score": 0,
+        "max": 20,
+        "details": []
+      },
+      "synergy": {
+        "score": 0,
+        "details": []
+      },
+      "trustCredits": {
+        "score": 50,
+        "details": [
+          "Verified Enterprise Infrastructure (Enterprise TLS/DKIM Pass) (-30)",
+          "RFC 8058 One-Click Unsubscribe Endpoint Verified (-12)",
+          "Active Mail Exchangers & Established Domain Reputation (-8)"
+        ]
+      },
+      "finalThreatScore": 0,
+      "hardOverrideTriggered": false,
+      "hardOverrideReason": ""
+    },
+    "whatToDo": "Safe to read and deliver to user inbox.",
+    "sender": {
+      "displayName": "Stripe",
+      "email": "invoice+statements@stripe.com",
+      "envelopeFrom": "invoice+statements@stripe.com",
+      "replyTo": "invoice+statements@stripe.com",
+      "originIp": "198.137.150.231",
+      "asn": "AS16509 Amazon.com, Inc.",
+      "location": "San Francisco, United States",
+      "lat": 37.7736,
+      "lng": -122.401,
+      "reverseDns": "198.137.150.231.in-addr.arpa",
+      "isSpoofed": false,
+      "spoofType": "None Detected (Sender Identity Aligned)"
+    },
+    "recipient": {
+      "email": "accounting@enterprise.com",
+      "department": "Enterprise Security Posture",
+      "targetHost": "mx1.enterprise.local"
+    },
+    "metadata": {
+      "subject": "Receipt for your monthly subscription payment #INV-92841",
+      "date": "Fri, 26 Sep 2026 11:30:00 +0000",
+      "messageId": "<stripe.inv.92841@stripe.com>",
+      "userAgent": "Standard Enterprise Mailer",
+      "contentType": "text/html; charset=UTF-8"
+    },
+    "auth": {
+      "spf": {
+        "status": "PASS",
+        "exists": true,
+        "friendlyName": "SPF (Sender Identity Check)",
+        "explanation": "Queries authoritative DNS TXT records to verify if the sending IP is authorized.",
+        "message": "Authenticated via SPF check for stripe.com"
+      },
+      "dkim": {
+        "status": "PASS",
+        "exists": true,
+        "friendlyName": "DKIM (Cryptographic Anti-Tamper Seal)",
+        "explanation": "Validates public key cryptographic signature against sender domain DNS.",
+        "message": "DKIM cryptographic signature verified for stripe.com"
+      },
+      "dmarc": {
+        "status": "PASS",
+        "exists": true,
+        "friendlyName": "DMARC (Domain Rule Alignment)",
+        "explanation": "Enforces domain policy for SPF/DKIM alignment and recipient protection.",
+        "message": "DMARC alignment verified for stripe.com"
+      }
+    },
+    "urls": [
+      {
+        "url": "https://dashboard.stripe.com/receipts/inv_92841",
+        "domain": "dashboard.stripe.com",
+        "risk": "Low",
+        "vtScore": "0/89 Clean (Verified Host)",
+        "ip": "198.137.150.41",
+        "domainAge": "Verified Enterprise Host",
+        "isPunycode": false
+      }
+    ],
+    "attachments": [],
+    "hashes": {
+      "sha256": "846a823fe8cebd1d88de7d432fb89d023df351155fe7e89b660b40843e893bbb",
+      "md5": "f2204ae3edbd9a71d1a9254707de366f"
+    },
+    "threatVerdict": {
+      "headline": "Authentic Electronic Message",
+      "confidence": 98.6,
+      "analysis": [
+        "Sender identity \"invoice+statements@stripe.com\" cross-referenced with live DNS records.",
+        "Cryptographic posture: SPF PASS | DKIM PASS | DMARC PASS.",
+        "Extracted 1 web links and 0 attachments scanned."
+      ],
+      "recommendation": "Deliver to user inbox."
+    },
+    "timeline": [
+      {
+        "time": "T+0ms",
+        "event": "Inbound connection parsed from 198.137.150.231",
+        "status": "info"
+      },
+      {
+        "time": "T+5ms",
+        "event": "Authoritative DNS resolution (SPF/DMARC): PASS/PASS",
+        "status": "success"
+      },
+      {
+        "time": "T+12ms",
+        "event": "Heuristic 200+ threat matrix score: 0/100",
+        "status": "success"
+      }
+    ],
+    "mitreAttack": []
+  },
+  {
+    "id": "eml-muinopf1",
+    "title": "Action Required: Your Google Workspace account will be suspended within 24 hours",
     "shortBadge": "🚨 Critical Threat",
     "userFriendlyCategory": "Brand Impersonation / BEC",
-    "threatScore": 99,
+    "threatScore": 90,
     "severity": "critical",
     "severityLabel": "Critical Threat (Red)",
     "isThreat": true,
-    "simpleTakeaway": "Critical Threat (Red): \"URGENT: Your PayPal Account Has Been Suspended!\". Typosquatting Masquerade: Imitating PayPal Security (paypai-security-alert.xyz ≠ paypal.com). High-risk disposable TLD (.xyz).",
+    "simpleTakeaway": "Critical Threat (Red): \"Action Required: Your Google Workspace account will be suspended within 24 hours\". Homoglyph Substitution: Hostile domain \"g00gle-security.xyz\" mimicking Google (+25). Weaponized link endpoint: g00gle-security.xyz (+25).",
     "whatHappened": [
-      "Sender: service@paypai-security-alert.xyz (PayPal Security)",
+      "Sender: alert@g00gle-security.xyz (Google Workspace Admin)",
       "Live DNS checks: SPF=FAIL, DKIM=FAIL, DMARC=FAIL",
       "Extracted 1 link(s) and 0 attachment(s).",
-      "Forensic Aspect Ratings: Auth=35/35, Identity=42/45, URLs=26/40, Attachments=0/55, Semantics=18/30"
+      "Forensic Vector Breakdown: Auth=15/15, Identity=25/25, URLs=25/25, Attachments=0/25, Semantics=0/20 | Trust Credits=-0"
     ],
+    "scoringBreakdown": {
+      "authentication": {
+        "score": 15,
+        "max": 15,
+        "details": [
+          "SPF Hard Fail: Sending IP not authorized in domain DNS (+12)",
+          "DKIM Signature Verification Failed: Cryptographic seal broken (+12)",
+          "DMARC Alignment Violated: Identifier alignment failed (+15)"
+        ]
+      },
+      "identity": {
+        "score": 25,
+        "max": 25,
+        "details": [
+          "Homoglyph Substitution: Hostile domain \"g00gle-security.xyz\" mimicking Google (+25)"
+        ]
+      },
+      "urls": {
+        "score": 25,
+        "max": 25,
+        "details": [
+          "Weaponized link endpoint: g00gle-security.xyz (+25)"
+        ]
+      },
+      "attachments": {
+        "score": 0,
+        "max": 25,
+        "details": []
+      },
+      "semantics": {
+        "score": 0,
+        "max": 20,
+        "details": []
+      },
+      "synergy": {
+        "score": 18,
+        "details": [
+          "Compound Attack: Disposable TLD hosting confirmed phishing endpoint (+18)"
+        ]
+      },
+      "trustCredits": {
+        "score": 0,
+        "details": []
+      },
+      "finalThreatScore": 90,
+      "hardOverrideTriggered": true,
+      "hardOverrideReason": "Critical Credential Harvester Override: Lookalike domain with phishing endpoint"
+    },
     "whatToDo": "Quarantine email immediately. Block sender IP and domain. Do not click links or execute attachments.",
     "sender": {
-      "displayName": "PayPal Security",
-      "email": "service@paypai-security-alert.xyz",
-      "envelopeFrom": "service@paypai-security-alert.xyz",
-      "replyTo": "phisher-trap@evil-hacker.top",
+      "displayName": "Google Workspace Admin",
+      "email": "alert@g00gle-security.xyz",
+      "envelopeFrom": "alert@g00gle-security.xyz",
+      "replyTo": "credential-drop@gmail.com",
       "originIp": "0.0.0.0",
       "asn": "AS-UNRESOLVED",
       "location": "Unresolved City, Unresolved Country",
@@ -28,17 +390,17 @@
       "lng": null,
       "reverseDns": "None (No PTR record)",
       "isSpoofed": true,
-      "spoofType": "Typosquatting Masquerade: Imitating PayPal Security (paypai-security-alert.xyz ≠ paypal.com)"
+      "spoofType": "Homoglyph Substitution: Hostile domain \"g00gle-security.xyz\" mimicking Google"
     },
     "recipient": {
-      "email": "victim@company.com",
+      "email": "target@enterprise.com",
       "department": "Enterprise Security Posture",
       "targetHost": "mx1.enterprise.local"
     },
     "metadata": {
-      "subject": "URGENT: Your PayPal Account Has Been Suspended!",
-      "date": "Sun, 26 Sep 2026 12:00:00 GMT",
-      "messageId": "<attack-12345@evil-hacker.top>",
+      "subject": "Action Required: Your Google Workspace account will be suspended within 24 hours",
+      "date": "Fri, 26 Sep 2026 12:00:00 +0000",
+      "messageId": "<threat-12345@evil-mta>",
       "userAgent": "Standard Enterprise Mailer",
       "contentType": "text/html; charset=UTF-8"
     },
@@ -48,44 +410,44 @@
         "exists": false,
         "friendlyName": "SPF (Sender Identity Check)",
         "explanation": "Queries authoritative DNS TXT records to verify if the sending IP is authorized.",
-        "message": "SPF check failed: sending IP is not authorized by paypai-security-alert.xyz"
+        "message": "SPF check failed: sending IP is not authorized by g00gle-security.xyz"
       },
       "dkim": {
         "status": "FAIL",
         "exists": false,
         "friendlyName": "DKIM (Cryptographic Anti-Tamper Seal)",
         "explanation": "Validates public key cryptographic signature against sender domain DNS.",
-        "message": "DKIM cryptographic verification failed for paypai-security-alert.xyz"
+        "message": "DKIM cryptographic verification failed for g00gle-security.xyz"
       },
       "dmarc": {
         "status": "FAIL",
         "exists": false,
         "friendlyName": "DMARC (Domain Rule Alignment)",
         "explanation": "Enforces domain policy for SPF/DKIM alignment and recipient protection.",
-        "message": "DMARC policy failed for paypai-security-alert.xyz"
+        "message": "DMARC policy failed for g00gle-security.xyz"
       }
     },
     "urls": [
       {
-        "url": "http://paypaI-verify-login.xyz/secure-login",
-        "domain": "paypai-verify-login.xyz",
+        "url": "https://g00gle-security.xyz/login-portal/verify-account",
+        "domain": "g00gle-security.xyz",
         "risk": "Critical",
-        "vtScore": "14/89 Malicious (NXDOMAIN Phish)",
+        "vtScore": "36/89 Malicious (Confirmed Phishing Endpoint)",
         "ip": "Unresolved Host",
-        "domainAge": "3 days old (Burner Domain)",
+        "domainAge": "2 days old (Burner Domain)",
         "isPunycode": false
       }
     ],
     "attachments": [],
     "hashes": {
-      "sha256": "b53b2a8b0a39a21779a9de1571490f8f568e84773e6ba4b2c3e3d16baa2bf536",
-      "md5": "1e3706771bd80deab5cb81a5251777fd"
+      "sha256": "76dae60b099bf90150aea793ab6c49f9b8abf2e79ee65c4477d29e3f84085dd5",
+      "md5": "9e9876e12d9cfb0bd4a274714c1a0545"
     },
     "threatVerdict": {
       "headline": "Malicious Vector Intercepted by ThreatLens AI",
       "confidence": 99.1,
       "analysis": [
-        "Sender identity \"service@paypai-security-alert.xyz\" cross-referenced with live DNS records.",
+        "Sender identity \"alert@g00gle-security.xyz\" cross-referenced with live DNS records.",
         "Cryptographic posture: SPF FAIL | DKIM FAIL | DMARC FAIL.",
         "Extracted 1 web links and 0 attachments scanned."
       ],
@@ -104,7 +466,175 @@
       },
       {
         "time": "T+12ms",
-        "event": "Heuristic 200+ threat matrix score: 99/100",
+        "event": "Heuristic 200+ threat matrix score: 90/100",
+        "status": "danger"
+      }
+    ],
+    "mitreAttack": [
+      {
+        "id": "T1566.002",
+        "name": "Spearphishing Link",
+        "tactic": "Initial Access"
+      },
+      {
+        "id": "T1036.005",
+        "name": "Masquerading",
+        "tactic": "Defense Evasion"
+      }
+    ]
+  },
+  {
+    "id": "eml-muinoq0x",
+    "title": "URGENT: Complete with DocuSign - Q3 Executive Remuneration Agreement.pdf",
+    "shortBadge": "⚠️ Mild Threat",
+    "userFriendlyCategory": "Brand Impersonation / BEC",
+    "threatScore": 54,
+    "severity": "medium",
+    "severityLabel": "Mild Threat (Orange)",
+    "isThreat": true,
+    "simpleTakeaway": "Mild Threat (Orange): \"URGENT: Complete with DocuSign - Q3 Executive Remuneration Agreement.pdf\". Homoglyph Substitution: Hostile domain \"docus1gn-verify-portal.top\" mimicking DocuSign (+25). Suspicious unverified link: docus1gn-verify-portal.top (+14).",
+    "whatHappened": [
+      "Sender: notifications@docus1gn-verify-portal.top (DocuSign Service)",
+      "Live DNS checks: SPF=FAIL, DKIM=FAIL, DMARC=FAIL",
+      "Extracted 1 link(s) and 0 attachment(s).",
+      "Forensic Vector Breakdown: Auth=15/15, Identity=25/25, URLs=14/25, Attachments=0/25, Semantics=0/20 | Trust Credits=-0"
+    ],
+    "scoringBreakdown": {
+      "authentication": {
+        "score": 15,
+        "max": 15,
+        "details": [
+          "SPF Hard Fail: Sending IP not authorized in domain DNS (+12)",
+          "DKIM Signature Verification Failed: Cryptographic seal broken (+12)",
+          "DMARC Alignment Violated: Identifier alignment failed (+15)"
+        ]
+      },
+      "identity": {
+        "score": 25,
+        "max": 25,
+        "details": [
+          "Homoglyph Substitution: Hostile domain \"docus1gn-verify-portal.top\" mimicking DocuSign (+25)"
+        ]
+      },
+      "urls": {
+        "score": 14,
+        "max": 25,
+        "details": [
+          "Suspicious unverified link: docus1gn-verify-portal.top (+14)"
+        ]
+      },
+      "attachments": {
+        "score": 0,
+        "max": 25,
+        "details": []
+      },
+      "semantics": {
+        "score": 0,
+        "max": 20,
+        "details": []
+      },
+      "synergy": {
+        "score": 0,
+        "details": []
+      },
+      "trustCredits": {
+        "score": 0,
+        "details": []
+      },
+      "finalThreatScore": 54,
+      "hardOverrideTriggered": false,
+      "hardOverrideReason": ""
+    },
+    "whatToDo": "Quarantine email immediately. Block sender IP and domain. Do not click links or execute attachments.",
+    "sender": {
+      "displayName": "DocuSign Service",
+      "email": "notifications@docus1gn-verify-portal.top",
+      "envelopeFrom": "notifications@docus1gn-verify-portal.top",
+      "replyTo": "phisher@harvest-passwords.top",
+      "originIp": "0.0.0.0",
+      "asn": "AS-UNRESOLVED",
+      "location": "Unresolved City, Unresolved Country",
+      "lat": null,
+      "lng": null,
+      "reverseDns": "None (No PTR record)",
+      "isSpoofed": true,
+      "spoofType": "Homoglyph Substitution: Hostile domain \"docus1gn-verify-portal.top\" mimicking DocuSign"
+    },
+    "recipient": {
+      "email": "executive@enterprise.com",
+      "department": "Enterprise Security Posture",
+      "targetHost": "mx1.enterprise.local"
+    },
+    "metadata": {
+      "subject": "URGENT: Complete with DocuSign - Q3 Executive Remuneration Agreement.pdf",
+      "date": "Fri, 26 Sep 2026 10:15:00 +0000",
+      "messageId": "<doc-attack-99@evil.top>",
+      "userAgent": "Standard Enterprise Mailer",
+      "contentType": "text/html; charset=UTF-8"
+    },
+    "auth": {
+      "spf": {
+        "status": "FAIL",
+        "exists": false,
+        "friendlyName": "SPF (Sender Identity Check)",
+        "explanation": "Queries authoritative DNS TXT records to verify if the sending IP is authorized.",
+        "message": "SPF check failed: sending IP is not authorized by docus1gn-verify-portal.top"
+      },
+      "dkim": {
+        "status": "FAIL",
+        "exists": false,
+        "friendlyName": "DKIM (Cryptographic Anti-Tamper Seal)",
+        "explanation": "Validates public key cryptographic signature against sender domain DNS.",
+        "message": "DKIM cryptographic verification failed for docus1gn-verify-portal.top"
+      },
+      "dmarc": {
+        "status": "FAIL",
+        "exists": false,
+        "friendlyName": "DMARC (Domain Rule Alignment)",
+        "explanation": "Enforces domain policy for SPF/DKIM alignment and recipient protection.",
+        "message": "DMARC policy failed for docus1gn-verify-portal.top"
+      }
+    },
+    "urls": [
+      {
+        "url": "https://docus1gn-verify-portal.top/signing/auth-login",
+        "domain": "docus1gn-verify-portal.top",
+        "risk": "Suspicious",
+        "vtScore": "12/89 Suspicious (NXDOMAIN Phish)",
+        "ip": "Unresolved Host",
+        "domainAge": "Standard Web Domain",
+        "isPunycode": false
+      }
+    ],
+    "attachments": [],
+    "hashes": {
+      "sha256": "f3a379cf31a5e42d3b6e3d3b2af74d2d178acb3fa3901813c1c4092cb055ff1b",
+      "md5": "bdfa544074b6b6f420be472470f6822c"
+    },
+    "threatVerdict": {
+      "headline": "Malicious Vector Intercepted by ThreatLens AI",
+      "confidence": 99.1,
+      "analysis": [
+        "Sender identity \"notifications@docus1gn-verify-portal.top\" cross-referenced with live DNS records.",
+        "Cryptographic posture: SPF FAIL | DKIM FAIL | DMARC FAIL.",
+        "Extracted 1 web links and 0 attachments scanned."
+      ],
+      "recommendation": "Quarantine message and isolate headers."
+    },
+    "timeline": [
+      {
+        "time": "T+0ms",
+        "event": "Inbound connection parsed from 0.0.0.0",
+        "status": "info"
+      },
+      {
+        "time": "T+5ms",
+        "event": "Authoritative DNS resolution (SPF/DMARC): FAIL/FAIL",
+        "status": "danger"
+      },
+      {
+        "time": "T+12ms",
+        "event": "Heuristic 200+ threat matrix score: 54/100",
         "status": "danger"
       }
     ],

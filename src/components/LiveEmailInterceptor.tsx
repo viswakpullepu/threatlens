@@ -66,6 +66,7 @@ export const LiveEmailInterceptor: React.FC<LiveEmailInterceptorProps> = ({
   const isPollingRef = useRef(false);
   const isInitialSyncRef = useRef(true);
   const knownIdsRef = useRef<Set<string>>(new Set());
+  const notifiedIdsRef = useRef<Set<string>>(new Set());
   const sessionIdRef = useRef<string>('default_client_session');
 
   // Initialize session ID and known IDs from scoped localStorage
@@ -165,16 +166,22 @@ export const LiveEmailInterceptor: React.FC<LiveEmailInterceptorProps> = ({
                   detail: { emails: allEmails, newEmails: newIncoming, sessionId: sid }
                 }));
 
-                // ONLY trigger loud sirens & floating intercept HUD for genuine critical attacks (score >= 75)
-                const highRiskIncoming = newIncoming.filter(e => (e.threatScore || 0) >= 75);
+                // ONLY trigger loud sirens & floating intercept HUD for genuine critical attacks (score >= 80)
+                const highRiskIncoming = newIncoming.filter(e => 
+                  (e.threatScore || 0) >= 80 && 
+                  e.isThreat && 
+                  e.id && 
+                  !notifiedIdsRef.current.has(e.id)
+                );
 
                 if (highRiskIncoming.length > 0) {
                   highRiskIncoming.sort((a, b) => (b.threatScore || 0) - (a.threatScore || 0));
                   const topEmail = highRiskIncoming[0];
+                  notifiedIdsRef.current.add(topEmail.id);
                   const score = topEmail.threatScore ?? 0;
                   const emailSubject = topEmail.metadata?.subject || topEmail.title || 'Inbound Message';
 
-                  // 1. Native Desktop Notification for high-threat (>75)
+                  // 1. Native Desktop Notification for high-threat (>80)
                   if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
                     try {
                       new Notification(
