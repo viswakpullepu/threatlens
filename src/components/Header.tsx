@@ -101,7 +101,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center gap-3 shrink-0">
             {isLoading ? (
               <div className="w-24 h-9 bg-slate-100 animate-pulse rounded-xl" />
-            ) : isAuthenticated && user ? (
+            ) : user ? (
               /* Authenticated User Profile Dropdown */
               <div className="relative" ref={profileRef}>
                 <button

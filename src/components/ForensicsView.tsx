@@ -49,7 +49,11 @@ export const ForensicsView: React.FC = () => {
   const [customEmails, setCustomEmails] = useState<any[]>(() => {
     try {
       const cached = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(BASE_STORAGE_KEY);
-      return cached ? JSON.parse(cached) : [];
+      const parsed = cached ? JSON.parse(cached) : [];
+      return Array.isArray(parsed) ? parsed.filter((e: any) => {
+        const s = e?.metadata?.subject || e?.title || e?.subject || '';
+        return !s.includes('[THREATLENS ALERT]');
+      }) : [];
     } catch (_) {
       return [];
     }
@@ -79,10 +83,14 @@ export const ForensicsView: React.FC = () => {
       });
       const data = await res.json();
       if (data.emails && Array.isArray(data.emails)) {
-        setCustomEmails(data.emails);
+        const cleanList = data.emails.filter((e: any) => {
+          const s = e?.metadata?.subject || e?.title || e?.subject || '';
+          return !s.includes('[THREATLENS ALERT]');
+        });
+        setCustomEmails(cleanList);
         if (data.nextPageToken) setNextPageToken(data.nextPageToken);
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data.emails)); } catch (_) {}
-        if (data.emails[0] && !selectedEmail) setSelectedEmail(data.emails[0]);
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cleanList)); } catch (_) {}
+        if (cleanList[0] && !selectedEmail) setSelectedEmail(cleanList[0]);
       }
     } catch (_) {}
   };
@@ -106,11 +114,18 @@ export const ForensicsView: React.FC = () => {
 
     const handleRealtimeUpdate = (e: any) => {
       if (e.detail?.emails) {
-        setCustomEmails(e.detail.emails);
+        const cleanList = (e.detail.emails || []).filter((item: any) => {
+          const s = item?.metadata?.subject || item?.title || item?.subject || '';
+          return !s.includes('[THREATLENS ALERT]');
+        });
+        setCustomEmails(cleanList);
         if (e.detail.newEmails && e.detail.newEmails[0]) {
-          setSelectedEmail(e.detail.newEmails[0]);
-          setSyncMessage(`⚡ [Live Ingest] Intercepted & analyzed "${e.detail.newEmails[0].metadata?.subject || 'New Email'}"`);
-          setTimeout(() => setSyncMessage(null), 5000);
+          const s = e.detail.newEmails[0].metadata?.subject || e.detail.newEmails[0].title || '';
+          if (!s.includes('[THREATLENS ALERT]')) {
+            setSelectedEmail(e.detail.newEmails[0]);
+            setSyncMessage(`⚡ [Live Ingest] Intercepted & analyzed "${s || 'New Email'}"`);
+            setTimeout(() => setSyncMessage(null), 5000);
+          }
         }
       }
     };

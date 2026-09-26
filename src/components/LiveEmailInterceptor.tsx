@@ -64,6 +64,7 @@ export const LiveEmailInterceptor: React.FC<LiveEmailInterceptorProps> = ({
   } | null>(null);
 
   const isPollingRef = useRef(false);
+  const isInitialSyncRef = useRef(true);
   const knownIdsRef = useRef<Set<string>>(new Set());
   const sessionIdRef = useRef<string>('default_client_session');
 
@@ -83,7 +84,9 @@ export const LiveEmailInterceptor: React.FC<LiveEmailInterceptorProps> = ({
       if (cached) {
         const list = JSON.parse(cached);
         if (Array.isArray(list)) {
-          list.forEach((e: any) => { if (e && e.id) knownIdsRef.current.add(e.id); });
+          list.forEach((e: any) => { 
+            if (e && e.id) knownIdsRef.current.add(e.id); 
+          });
         }
       }
     } catch (_) {}
@@ -119,10 +122,30 @@ export const LiveEmailInterceptor: React.FC<LiveEmailInterceptorProps> = ({
           if (syncRes.ok) {
             const syncData = await syncRes.json();
             if (syncData.success && syncData.emails) {
-              const allEmails = syncData.emails;
-              const newIncoming: any[] = [];
+              // Filter out any internal alert spam
+              const allEmails = (syncData.emails || []).filter((e: any) => {
+                const s = e?.metadata?.subject || e?.title || e?.subject || '';
+                return !s.includes('[THREATLENS ALERT]');
+              });
 
-              // Check for genuinely new incoming messages
+              // Initial sync after sign-in: silently establish baseline without blasting alarms for historical mailbox emails
+              if (isInitialSyncRef.current) {
+                isInitialSyncRef.current = false;
+                allEmails.forEach((email: any) => {
+                  if (email && email.id) knownIdsRef.current.add(email.id);
+                });
+                try {
+                  localStorage.setItem(`threatlens_custom_emails_db_${sid}`, JSON.stringify(allEmails));
+                  localStorage.setItem('threatlens_custom_emails_db', JSON.stringify(allEmails));
+                } catch (_) {}
+                window.dispatchEvent(new CustomEvent('threatlens_emails_updated', {
+                  detail: { emails: allEmails, newEmails: [], sessionId: sid }
+                }));
+                return;
+              }
+
+              // Subsequent polling: identify genuine new incoming messages
+              const newIncoming: any[] = [];
               allEmails.forEach((email: any) => {
                 if (email && email.id && !knownIdsRef.current.has(email.id)) {
                   knownIdsRef.current.add(email.id);
@@ -146,6 +169,7 @@ export const LiveEmailInterceptor: React.FC<LiveEmailInterceptorProps> = ({
                 newIncoming.sort((a, b) => (b.threatScore || 0) - (a.threatScore || 0));
                 const topEmail = newIncoming[0];
                 const score = topEmail.threatScore ?? 0;
+                const emailSubject = topEmail.metadata?.subject || topEmail.title || 'Inbound Message';
 
                 // 1. Native Desktop Notification for high-threat (>75) and all new intercepts
                 if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
@@ -155,8 +179,8 @@ export const LiveEmailInterceptor: React.FC<LiveEmailInterceptorProps> = ({
                       isHigh ? '🚨 CRITICAL THREAT INTERCEPTED' : '🛡️ ThreatLens Intercept',
                       {
                         body: isHigh
-                          ? `Threat Score: ${score}/100 [CRITICAL] - "${topEmail.subject}". DO NOT open this email!`
-                          : `New email intercepted: "${topEmail.subject}" (Score: ${score}/100)`,
+                          ? `Threat Score: ${score}/100 [CRITICAL] - "${emailSubject}". DO NOT open this email!`
+                          : `New email intercepted: "${emailSubject}" (Score: ${score}/100)`,
                         icon: '/favicon.ico',
                         tag: topEmail.id
                       }

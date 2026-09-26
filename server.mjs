@@ -57,6 +57,19 @@ export function extractSessionId(req, url) {
   return 'default_client_session';
 }
 
+export function filterOutAlertSpam(emails) {
+  if (!Array.isArray(emails)) return [];
+  return emails.filter(e => {
+    const subj = e?.metadata?.subject || e?.title || e?.subject || '';
+    const sender = e?.sender?.displayName || e?.sender?.email || '';
+    const desc = Array.isArray(e?.whatHappened) ? e.whatHappened.join(' ') : '';
+    return !subj.includes('[THREATLENS ALERT]') && 
+           !subj.includes('ThreatLens AI Intercept') &&
+           !sender.includes('ThreatLens') &&
+           !desc.includes('THREATLENS AI INTERCEPT');
+  });
+}
+
 /**
  * Retrieve session state (tokens, user profile, emails) scoped to this user.
  * Seamlessly hydrates across page reloads and server restarts.
@@ -67,13 +80,17 @@ export async function getSessionState(sessionId) {
   // 1. Check in-memory session map for this specific session ID
   if (activeSessions.has(sid)) {
     const mem = activeSessions.get(sid);
-    if (mem.tokens && mem.tokens.access_token) return mem;
+    if (mem.tokens && mem.tokens.access_token) {
+      mem.emails = filterOutAlertSpam(mem.emails);
+      return mem;
+    }
   }
 
   // 2. Check default in-memory session
   if (activeSessions.has('default_client_session')) {
     const defaultMem = activeSessions.get('default_client_session');
     if (defaultMem.tokens && defaultMem.tokens.access_token) {
+      defaultMem.emails = filterOutAlertSpam(defaultMem.emails);
       activeSessions.set(sid, defaultMem);
       return defaultMem;
     }
@@ -92,7 +109,7 @@ export async function getSessionState(sessionId) {
         const loaded = {
           tokens: dbOAuth.tokens,
           user: dbOAuth.user,
-          emails: dbEmails
+          emails: filterOutAlertSpam(dbEmails)
         };
         activeSessions.set(sid, loaded);
         activeSessions.set('default_client_session', loaded);
@@ -117,7 +134,7 @@ export async function getSessionState(sessionId) {
         const loaded = {
           tokens: oData.tokens || null,
           user: oData.user || null,
-          emails: localEmails
+          emails: filterOutAlertSpam(localEmails)
         };
         activeSessions.set(sid, loaded);
         activeSessions.set('default_client_session', loaded);
@@ -173,6 +190,13 @@ export async function saveSessionState(sessionId, tokens, user) {
  * - Persistent DB / Threat History: ONLY records non-safe threats (Score >= 50).
  */
 export async function persistEmail(email, sessionId = 'default_client_session', ownerEmail = null) {
+  if (!email) return;
+  const subj = email?.metadata?.subject || email?.title || email?.subject || '';
+  const sender = email?.sender?.displayName || email?.sender?.email || '';
+  if (subj.includes('[THREATLENS ALERT]') || sender.includes('ThreatLens')) {
+    return;
+  }
+
   const current = activeSessions.get(sessionId) || { tokens: null, user: null, emails: [] };
   
   // Keep all emails in active session memory/stream for display (up to 2500 emails)
@@ -285,72 +309,12 @@ async function fetchGoogleUserProfile(accessToken) {
 }
 
 /**
- * Dispatch automated security warning email to user when a threat (Score >= 75) is intercepted.
+ * Log security warning event for ThreatLens SOC telemetry (strictly NO outbound emails sent to user inbox).
  */
 export async function sendSecurityAlertEmail(accessToken, userEmail, email) {
-  if (!accessToken || !userEmail) return false;
-  try {
-    const subject = `🚨 [THREATLENS ALERT] High-Risk Threat Intercepted: "${email.subject || 'Suspicious Email'}"`;
-    const bodyText = [
-      `=============================================================`,
-      `🚨 THREATLENS AI INTERCEPT & DEFENSE WARNING`,
-      `=============================================================`,
-      ``,
-      `A high-severity threat has been detected and intercepted targeting your inbox.`,
-      ``,
-      `📊 THREAT METRICS:`,
-      `• Threat Score: ${email.threatScore}/100 [CRITICAL THREAT]`,
-      `• Classification: ${email.threatType || 'High-Risk Phishing / Fraud Attack'}`,
-      `• Originating Sender: ${email.sender?.name || ''} <${email.sender?.email || 'Unknown'}>`,
-      `• Origin Location: ${email.originLocation?.city || 'No Location Data'}, ${email.originLocation?.country || 'No Location Data'} (IP: ${email.originLocation?.ip || 'Undisclosed'})`,
-      ``,
-      `🔍 FORENSIC DIAGNOSTICS:`,
-      `• SPF Verification: ${email.authentication?.spf?.status || 'N/A'}`,
-      `• DKIM Cryptographic Signature: ${email.authentication?.dkim?.status || 'N/A'}`,
-      `• DMARC Policy Enforcement: ${email.authentication?.dmarc?.status || 'N/A'}`,
-      ...(email.indicators || []).map(ind => `• Flagged Indicator: [${(ind.severity || 'HIGH').toUpperCase()}] ${ind.description || ind.type}`),
-      ``,
-      `⚠️ CRITICAL ACTION REQUIRED:`,
-      `DO NOT click any links, open attachments, or reply to the sender of that email.`,
-      ``,
-      `View the complete multi-vector forensic telemetry on your ThreatLens Security Operations Center.`,
-      ``,
-      `ThreatLens Autonomous Threat Defense System`
-    ].join('\r\n');
-
-    const rfc822 = [
-      `From: ThreatLens AI Security Guard <me>`,
-      `To: ${userEmail}`,
-      `Subject: =?UTF-8?B?${Buffer.from(subject).toString('base64')}?=`,
-      `MIME-Version: 1.0`,
-      `Content-Type: text/plain; charset=UTF-8`,
-      `Content-Transfer-Encoding: 7bit`,
-      ``,
-      bodyText
-    ].join('\r\n');
-
-    const rawBase64 = Buffer.from(rfc822).toString('base64url');
-    const sendRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ raw: rawBase64 })
-    });
-
-    if (sendRes.ok) {
-      console.log(`[ThreatLens Alert] Dispatched critical security warning email to ${userEmail} for email "${email.subject}" (Score: ${email.threatScore})`);
-      return true;
-    } else {
-      const errText = await sendRes.text();
-      console.warn('[ThreatLens Alert Notice]:', errText);
-      return false;
-    }
-  } catch (err) {
-    console.warn('[ThreatLens Alert Exception]:', err.message);
-    return false;
-  }
+  const emailSubj = email?.metadata?.subject || email?.title || email?.subject || 'Inbound Email';
+  console.log(`[ThreatLens SOC Telemetry]: High-severity threat logged (${email?.threatScore ?? 0}/100) "${emailSubj}" for user ${userEmail}`);
+  return true;
 }
 
 /**
@@ -361,8 +325,9 @@ export async function syncGmailInbox(accessToken, sessionId = 'default_client_se
     const session = await getSessionState(sessionId);
     const existingEmails = session.emails || [];
 
-    // 1. Fetch message IDs from user's primary inbox
-    let listUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${limit}&q=in:inbox`;
+    // 1. Fetch message IDs from user's primary inbox (excluding any internal security alerts)
+    const safeQuery = 'in:inbox -subject:"THREATLENS ALERT" -from:me';
+    let listUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${limit}&q=${encodeURIComponent(safeQuery)}`;
     if (pageToken) listUrl += `&pageToken=${encodeURIComponent(pageToken)}`;
 
     const listRes = await fetch(listUrl, {
@@ -422,18 +387,24 @@ export async function syncGmailInbox(accessToken, sessionId = 'default_client_se
         if (!msgData.raw) return null;
 
         const rawText = Buffer.from(msgData.raw, 'base64url').toString('utf8');
+        
+        // Skip any internal ThreatLens alerts or notifications
+        if (
+          rawText.includes('[THREATLENS ALERT]') || 
+          rawText.includes('ThreatLens AI Security Guard') ||
+          rawText.includes('THREATLENS AI INTERCEPT & DEFENSE WARNING')
+        ) {
+          return null;
+        }
+
         const analysis = await analyzeEmail(rawText, `gmail_${item.id}.eml`, sessionId, userEmail || session.user?.email);
+        if (!analysis) return null;
         analysis.id = item.id;
         analysis.source = 'gmail_oauth_live';
         analysis.ownerEmail = userEmail || session.user?.email || null;
         analysis.sessionId = sessionId;
 
         await persistEmail(analysis, sessionId, analysis.ownerEmail);
-
-        // Auto-dispatch critical warning email if Threat Score >= 75
-        if ((analysis.threatScore || 0) >= 75 && (userEmail || session.user?.email)) {
-          sendSecurityAlertEmail(accessToken, userEmail || session.user?.email, analysis).catch(() => {});
-        }
 
         return analysis;
       }));
@@ -1223,6 +1194,9 @@ export async function handleRequest(req, res) {
         session.emails = dbEmails;
       }
     }
+
+    emails = filterOutAlertSpam(emails);
+    session.emails = emails;
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ 
