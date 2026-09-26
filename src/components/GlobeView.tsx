@@ -43,6 +43,7 @@ interface ThreatLocationItem {
 }
 
 import { getOrCreateSessionId } from './LiveEmailInterceptor';
+import { SAMPLE_EMAILS } from '../data/threatData';
 
 const CITY_COORDINATES: Record<string, { lat: number; lng: number; country: string }> = {
   'frankfurt': { lat: 50.1109, lng: 8.6821, country: 'Germany' },
@@ -85,13 +86,14 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const sessionId = getOrCreateSessionId();
   
-  // Custom emails from database & localStorage
+  // Custom emails from database & localStorage (falls back to SAMPLE_EMAILS so globe is immediately rich with telemetry)
   const [customEmails, setCustomEmails] = useState<any[]>(() => {
     try {
       const cached = localStorage.getItem(`threatlens_custom_emails_db_${sessionId}`);
-      return cached ? JSON.parse(cached) : [];
+      const parsed = cached ? JSON.parse(cached) : [];
+      return (Array.isArray(parsed) && parsed.length > 0) ? parsed : SAMPLE_EMAILS;
     } catch (_) {
-      return [];
+      return SAMPLE_EMAILS;
     }
   });
 
@@ -99,11 +101,12 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
   useEffect(() => {
     const sid = getOrCreateSessionId();
     fetch(`/api/emails?session_id=${encodeURIComponent(sid)}`, {
-      headers: { 'x-session-id': sid }
+      headers: { 'x-session-id': sid },
+      credentials: 'include'
     })
       .then(res => res.json())
       .then(data => {
-        if (data.emails && Array.isArray(data.emails)) {
+        if (data.emails && Array.isArray(data.emails) && data.emails.length > 0) {
           setCustomEmails(data.emails);
           try {
             localStorage.setItem(`threatlens_custom_emails_db_${sid}`, JSON.stringify(data.emails));
