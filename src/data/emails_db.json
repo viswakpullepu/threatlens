@@ -1,6 +1,6 @@
 [
   {
-    "id": "eml-muinonak",
+    "id": "eml-h55u8za",
     "title": "Security alert: new device signed in to your Google Account",
     "shortBadge": "✅ 100% Safe",
     "userFriendlyCategory": "Clean Authentic Electronic Mail",
@@ -8,12 +8,12 @@
     "severity": "safe",
     "severityLabel": "100% Safe & Verified (Green)",
     "isThreat": false,
-    "simpleTakeaway": "Email is authentic and verified safe (Score: 0/100) from official Google infrastructure. Cryptographic signatures and DNS authentication passed.",
+    "simpleTakeaway": "Email is authentic and verified safe (Score: 0/100) from official Google infrastructure. Cryptographic signatures and live authentication passed.",
     "whatHappened": [
       "Sender: no-reply@accounts.google.com (Google)",
-      "Live DNS checks: SPF=PASS, DKIM=PASS, DMARC=PASS",
-      "Extracted 2 link(s) and 0 attachment(s).",
-      "Forensic Vector Breakdown: Auth=0/15, Identity=0/25, URLs=0/25, Attachments=0/25, Semantics=0/20 | Trust Credits=-43"
+      "Cryptographic posture: SPF=PASS (SPF Verification Passed (Google Infrastructure)) | DKIM=PASS | DMARC=PASS",
+      "Extracted 2 link(s) and 0 attachment(s) from payload.",
+      "Forensic Vector Breakdown: Auth=0/15, Identity=0/25, URLs=0/25, Attachments=0/25, Semantics=0/20 | Trust Credits=-35"
     ],
     "scoringBreakdown": {
       "authentication": {
@@ -36,7 +36,7 @@
         "max": 25,
         "details": []
       },
-      "semantics": {
+      "nlp": {
         "score": 0,
         "max": 20,
         "details": []
@@ -46,34 +46,31 @@
         "details": []
       },
       "trustCredits": {
-        "score": 43,
+        "score": 35,
         "details": [
-          "Verified Google Official Infrastructure (SPF/DKIM/DMARC Pass) (-35)",
-          "Active Mail Exchangers & Established Domain Reputation (-8)"
+          "Verified Google Official Infrastructure (SPF/DKIM/DMARC Pass) (-35)"
         ]
       },
       "finalThreatScore": 0,
       "hardOverrideTriggered": false,
       "hardOverrideReason": ""
     },
-    "whatToDo": "Safe to read and deliver to user inbox.",
+    "whatToDo": "Safe for user inbox delivery.",
     "sender": {
       "displayName": "Google",
       "email": "no-reply@accounts.google.com",
       "envelopeFrom": "no-reply@accounts.google.com",
       "replyTo": "no-reply@accounts.google.com",
-      "originIp": "192.178.211.84",
-      "asn": "AS15169 Google LLC",
-      "location": "Mountain View, United States",
-      "lat": 37.4225,
-      "lng": -122.085,
-      "reverseDns": "lcbomp-in-f84.1e100.net",
+      "originIp": "209.85.220.41",
+      "asn": "AS-DIRECT (209.85.220.41)",
+      "location": "External Origin",
+      "reverseDns": "209.85.220.41.in-addr.arpa",
       "isSpoofed": false,
       "spoofType": "Verified Official Google Infrastructure"
     },
     "recipient": {
       "email": "user@enterprise.com",
-      "department": "Enterprise Security Posture",
+      "department": "Corporate Security Operations",
       "targetHost": "mx1.enterprise.local"
     },
     "metadata": {
@@ -88,22 +85,22 @@
         "status": "PASS",
         "exists": true,
         "friendlyName": "SPF (Sender Identity Check)",
-        "explanation": "Queries authoritative DNS TXT records to verify if the sending IP is authorized.",
-        "message": "Authenticated via SPF check for accounts.google.com"
+        "explanation": "Queries domain DNS records to verify if the sending server IP is authorized.",
+        "message": "SPF Verification Passed (Google Infrastructure)"
       },
       "dkim": {
         "status": "PASS",
         "exists": true,
         "friendlyName": "DKIM (Cryptographic Anti-Tamper Seal)",
         "explanation": "Validates public key cryptographic signature against sender domain DNS.",
-        "message": "DKIM cryptographic signature verified for accounts.google.com"
+        "message": "DKIM Cryptographic Signature Verified"
       },
       "dmarc": {
         "status": "PASS",
         "exists": true,
         "friendlyName": "DMARC (Domain Rule Alignment)",
         "explanation": "Enforces domain policy for SPF/DKIM alignment and recipient protection.",
-        "message": "DMARC alignment verified for accounts.google.com"
+        "message": "DMARC Domain Alignment Satisfied"
       }
     },
     "urls": [
@@ -112,7 +109,7 @@
         "domain": "myaccount.google.com",
         "risk": "Low",
         "vtScore": "0/89 Clean (Verified Host)",
-        "ip": "192.178.211.84",
+        "ip": "104.244.42.1",
         "domainAge": "Verified Enterprise Host",
         "isPunycode": false
       },
@@ -121,47 +118,179 @@
         "domain": "accounts.google.com",
         "risk": "Low",
         "vtScore": "0/89 Clean (Verified Host)",
-        "ip": "192.178.211.84",
+        "ip": "104.244.42.1",
         "domainAge": "Verified Enterprise Host",
         "isPunycode": false
       }
     ],
     "attachments": [],
     "hashes": {
-      "sha256": "7811c21a075651a1a02468bbac60cf49852ad5236ad29bbcef00bcf80a7379bb",
-      "md5": "c498076aba0f05ce7fb14730e2b03d0d"
+      "sha256": "9f83acde7821034459012bbde899120c8f1e8432170498aefb098172c91200fa",
+      "md5": "8f12a64c8d9e72b4510fa9c1782e44d1"
+    },
+    "nlpTfidf": {
+      "linguisticThreatScore": 2,
+      "topFeatures": [],
+      "dominantCategory": "Benign / Normal Discourse",
+      "linguisticVerdict": "Normal linguistic profile. Low semantic deception markers detected.",
+      "tokenCount": 108,
+      "lexicalDiversity": 0.57,
+      "urgencyDensity": 0
     },
     "threatVerdict": {
       "headline": "Authentic Electronic Message",
-      "confidence": 98.6,
+      "confidence": 99.4,
       "analysis": [
-        "Sender identity \"no-reply@accounts.google.com\" cross-referenced with live DNS records.",
-        "Cryptographic posture: SPF PASS | DKIM PASS | DMARC PASS.",
-        "Extracted 2 web links and 0 attachments scanned."
+        "Sender identity \"no-reply@accounts.google.com\" inspected across all 7 forensic security dimensions.",
+        "Authentication posture: SPF PASS | DKIM PASS | DMARC PASS.",
+        "Extracted 2 link(s) and 0 attachment(s).",
+        "Multi-Aspect Verification: Authenticity & Trust Score = 0/100."
       ],
-      "recommendation": "Deliver to user inbox."
+      "recommendation": "Deliver to recipient inbox."
     },
     "timeline": [
       {
         "time": "T+0ms",
-        "event": "Inbound connection parsed from 192.178.211.84",
+        "event": "Inbound connection parsed from 209.85.220.41",
         "status": "info"
       },
       {
-        "time": "T+5ms",
-        "event": "Authoritative DNS resolution (SPF/DMARC): PASS/PASS",
+        "time": "T+4ms",
+        "event": "Authentication evaluation: SPF=PASS, DKIM=PASS, DMARC=PASS",
         "status": "success"
       },
       {
-        "time": "T+12ms",
-        "event": "Heuristic 200+ threat matrix score: 0/100",
+        "time": "T+10ms",
+        "event": "Multi-Aspect forensic verification rating: 0/100",
         "status": "success"
       }
     ],
+    "deepAudit": {
+      "passesPassed": 8,
+      "totalPasses": 8,
+      "overallAuditVerdict": "CLEAN_VERIFIED",
+      "passes": [
+        {
+          "passId": "PASS-1",
+          "name": "RFC 8617 ARC Chain of Custody",
+          "category": "Cryptographic Protocol",
+          "status": "VERIFIED",
+          "headline": "Cryptographic Chain of Custody Verified",
+          "technicalDetails": "ARC instance initialized at first hop (cv=none). Initial authenticating boundary verified.",
+          "scoreImpact": -15
+        },
+        {
+          "passId": "PASS-2",
+          "name": "FCrDNS & Transit Hop Telemetry",
+          "category": "Network Infrastructure",
+          "status": "VERIFIED",
+          "headline": "Forward-Confirmed rDNS Verified",
+          "technicalDetails": "Verified MTA transmission relay (1 transit hops, estimated latency: 142ms).",
+          "scoreImpact": 0
+        },
+        {
+          "passId": "PASS-3",
+          "name": "UTR #39 Unicode Homoglyph & Punycode Audit",
+          "category": "Identity Obfuscation",
+          "status": "VERIFIED",
+          "headline": "All Domain Characters Normalized",
+          "technicalDetails": "No Unicode confusables, Cyrillic substitutions, or Punycode homographs identified.",
+          "scoreImpact": 0
+        },
+        {
+          "passId": "PASS-4",
+          "name": "Zero-Font & HTML Cloaking De-obfuscation",
+          "category": "Content Defense Evasion",
+          "status": "CLEAN",
+          "headline": "Clean HTML Rendering Tree",
+          "technicalDetails": "No zero-font, white-on-white, or CSS-hidden evasion artifacts discovered.",
+          "scoreImpact": 0
+        },
+        {
+          "passId": "PASS-5",
+          "name": "Quishing & Mobile QR Vector Analysis",
+          "category": "Out-of-Band Attack Vector",
+          "status": "CLEAN",
+          "headline": "Zero Quishing Indicators Present",
+          "technicalDetails": "No mobile QR code lures or quishing behavioral directives detected.",
+          "scoreImpact": 0
+        },
+        {
+          "passId": "PASS-6",
+          "name": "SaaS Form Abuse & Cloud Infrastructure Guard",
+          "category": "Cloud Service Abuse",
+          "status": "CLEAN",
+          "headline": "Zero Malicious Cloud SaaS Abuse",
+          "technicalDetails": "No abuse of legitimate cloud SaaS or free hosting platforms discovered.",
+          "scoreImpact": 0
+        },
+        {
+          "passId": "PASS-7",
+          "name": "HTML Smuggling & In-Memory Dropper Probe",
+          "category": "Active Malware Delivery",
+          "status": "CLEAN",
+          "headline": "No Client-Side Binary Smuggling",
+          "technicalDetails": "No browser memory payload assembly or HTML smuggling routines discovered.",
+          "scoreImpact": 0
+        },
+        {
+          "passId": "PASS-8",
+          "name": "MITRE ATT&CK Enterprise Matrix Alignment",
+          "category": "Adversary Tactics Attribution",
+          "status": "VERIFIED",
+          "headline": "Zero Threat Actor Tactics Observed",
+          "technicalDetails": "Full behavioral compliance with clean enterprise communication profiles.",
+          "scoreImpact": 0
+        }
+      ],
+      "arc": {
+        "status": "PASS",
+        "chainValidation": "cv=none",
+        "sealCount": 1,
+        "details": "ARC instance initialized at first hop (cv=none). Initial authenticating boundary verified."
+      },
+      "fcrdns": {
+        "status": "VERIFIED",
+        "clientIp": "209.85.220.41",
+        "ptrRecord": "209.85.220.41.in-addr.arpa",
+        "hopCount": 1,
+        "latencyMs": 142,
+        "isResidential": false,
+        "details": "Verified MTA transmission relay (1 transit hops, estimated latency: 142ms)."
+      },
+      "homoglyphs": {
+        "detected": false,
+        "confusables": [],
+        "details": "No Unicode confusables, Cyrillic substitutions, or Punycode homographs identified."
+      },
+      "htmlCloaking": {
+        "detected": false,
+        "cloakedSnippets": [],
+        "techniques": [],
+        "details": "No zero-font, white-on-white, or CSS-hidden evasion artifacts discovered."
+      },
+      "quishing": {
+        "detected": false,
+        "qrSignaturesFound": [],
+        "details": "No mobile QR code lures or quishing behavioral directives detected."
+      },
+      "saasAbuse": {
+        "detected": false,
+        "abusedPlatform": null,
+        "portalUrl": null,
+        "details": "No abuse of legitimate cloud SaaS or free hosting platforms discovered."
+      },
+      "htmlSmuggling": {
+        "detected": false,
+        "payloadType": null,
+        "details": "No browser memory payload assembly or HTML smuggling routines discovered."
+      },
+      "mitreMapping": []
+    },
     "mitreAttack": []
   },
   {
-    "id": "eml-muinopdf",
+    "id": "eml-yl29oqe",
     "title": "Receipt for your monthly subscription payment #INV-92841",
     "shortBadge": "✅ 100% Safe",
     "userFriendlyCategory": "Clean Authentic Electronic Mail",
@@ -169,12 +298,12 @@
     "severity": "safe",
     "severityLabel": "100% Safe & Verified (Green)",
     "isThreat": false,
-    "simpleTakeaway": "Email is authentic and verified safe (Score: 0/100) from \"stripe.com\". Live DNS authentication passed.",
+    "simpleTakeaway": "Email from \"stripe.com\" passed authentication checks (SPF=PASS, DKIM=PASS). Threat Score: 0/100.",
     "whatHappened": [
       "Sender: invoice+statements@stripe.com (Stripe)",
-      "Live DNS checks: SPF=PASS, DKIM=PASS, DMARC=PASS",
-      "Extracted 1 link(s) and 0 attachment(s).",
-      "Forensic Vector Breakdown: Auth=0/15, Identity=0/25, URLs=0/25, Attachments=0/25, Semantics=0/20 | Trust Credits=-50"
+      "Cryptographic posture: SPF=PASS (SPF Verification Passed) | DKIM=PASS | DMARC=PASS",
+      "Extracted 1 link(s) and 0 attachment(s) from payload.",
+      "Forensic Vector Breakdown: Auth=0/15, Identity=0/25, URLs=0/25, Attachments=0/25, Semantics=0/20 | Trust Credits=-42"
     ],
     "scoringBreakdown": {
       "authentication": {
@@ -197,7 +326,7 @@
         "max": 25,
         "details": []
       },
-      "semantics": {
+      "nlp": {
         "score": 0,
         "max": 20,
         "details": []
@@ -207,35 +336,32 @@
         "details": []
       },
       "trustCredits": {
-        "score": 50,
+        "score": 42,
         "details": [
           "Verified Enterprise Infrastructure (Enterprise TLS/DKIM Pass) (-30)",
-          "RFC 8058 One-Click Unsubscribe Endpoint Verified (-12)",
-          "Active Mail Exchangers & Established Domain Reputation (-8)"
+          "RFC 8058 One-Click Unsubscribe Endpoint Verified (-12)"
         ]
       },
       "finalThreatScore": 0,
       "hardOverrideTriggered": false,
       "hardOverrideReason": ""
     },
-    "whatToDo": "Safe to read and deliver to user inbox.",
+    "whatToDo": "Safe for user inbox delivery.",
     "sender": {
       "displayName": "Stripe",
       "email": "invoice+statements@stripe.com",
       "envelopeFrom": "invoice+statements@stripe.com",
       "replyTo": "invoice+statements@stripe.com",
-      "originIp": "198.137.150.231",
-      "asn": "AS16509 Amazon.com, Inc.",
-      "location": "San Francisco, United States",
-      "lat": 37.7736,
-      "lng": -122.401,
-      "reverseDns": "198.137.150.231.in-addr.arpa",
+      "originIp": "54.187.174.169",
+      "asn": "AS-DIRECT (54.187.174.169)",
+      "location": "External Origin",
+      "reverseDns": "54.187.174.169.in-addr.arpa",
       "isSpoofed": false,
-      "spoofType": "None Detected (Sender Identity Aligned)"
+      "spoofType": "None Detected (Identity Aligned)"
     },
     "recipient": {
       "email": "accounting@enterprise.com",
-      "department": "Enterprise Security Posture",
+      "department": "Corporate Security Operations",
       "targetHost": "mx1.enterprise.local"
     },
     "metadata": {
@@ -250,22 +376,22 @@
         "status": "PASS",
         "exists": true,
         "friendlyName": "SPF (Sender Identity Check)",
-        "explanation": "Queries authoritative DNS TXT records to verify if the sending IP is authorized.",
-        "message": "Authenticated via SPF check for stripe.com"
+        "explanation": "Queries domain DNS records to verify if the sending server IP is authorized.",
+        "message": "SPF Verification Passed"
       },
       "dkim": {
         "status": "PASS",
         "exists": true,
         "friendlyName": "DKIM (Cryptographic Anti-Tamper Seal)",
         "explanation": "Validates public key cryptographic signature against sender domain DNS.",
-        "message": "DKIM cryptographic signature verified for stripe.com"
+        "message": "DKIM Cryptographic Signature Verified"
       },
       "dmarc": {
         "status": "PASS",
         "exists": true,
         "friendlyName": "DMARC (Domain Rule Alignment)",
         "explanation": "Enforces domain policy for SPF/DKIM alignment and recipient protection.",
-        "message": "DMARC alignment verified for stripe.com"
+        "message": "DMARC Domain Alignment Satisfied"
       }
     },
     "urls": [
@@ -274,69 +400,210 @@
         "domain": "dashboard.stripe.com",
         "risk": "Low",
         "vtScore": "0/89 Clean (Verified Host)",
-        "ip": "198.137.150.41",
+        "ip": "104.244.42.1",
         "domainAge": "Verified Enterprise Host",
         "isPunycode": false
       }
     ],
     "attachments": [],
     "hashes": {
-      "sha256": "846a823fe8cebd1d88de7d432fb89d023df351155fe7e89b660b40843e893bbb",
-      "md5": "f2204ae3edbd9a71d1a9254707de366f"
+      "sha256": "9f83acde7821034459012bbde899120c8f1e8432170498aefb098172c91200fa",
+      "md5": "8f12a64c8d9e72b4510fa9c1782e44d1"
+    },
+    "nlpTfidf": {
+      "linguisticThreatScore": 2,
+      "topFeatures": [
+        {
+          "term": "unsubscribe",
+          "tf": 0.012,
+          "idf": 1.35,
+          "tfidf": 0.1627,
+          "category": "benign",
+          "weightDescription": "TF: 1.2% × IDF: 1.35 → TF-IDF: 0.1627"
+        }
+      ],
+      "dominantCategory": "Benign / Normal Discourse",
+      "linguisticVerdict": "Normal linguistic profile. Low semantic deception markers detected.",
+      "tokenCount": 83,
+      "lexicalDiversity": 0.64,
+      "urgencyDensity": 0
     },
     "threatVerdict": {
       "headline": "Authentic Electronic Message",
-      "confidence": 98.6,
+      "confidence": 99.4,
       "analysis": [
-        "Sender identity \"invoice+statements@stripe.com\" cross-referenced with live DNS records.",
-        "Cryptographic posture: SPF PASS | DKIM PASS | DMARC PASS.",
-        "Extracted 1 web links and 0 attachments scanned."
+        "Sender identity \"invoice+statements@stripe.com\" inspected across all 7 forensic security dimensions.",
+        "Authentication posture: SPF PASS | DKIM PASS | DMARC PASS.",
+        "Extracted 1 link(s) and 0 attachment(s).",
+        "Multi-Aspect Verification: Authenticity & Trust Score = 0/100."
       ],
-      "recommendation": "Deliver to user inbox."
+      "recommendation": "Deliver to recipient inbox."
     },
     "timeline": [
       {
         "time": "T+0ms",
-        "event": "Inbound connection parsed from 198.137.150.231",
+        "event": "Inbound connection parsed from 54.187.174.169",
         "status": "info"
       },
       {
-        "time": "T+5ms",
-        "event": "Authoritative DNS resolution (SPF/DMARC): PASS/PASS",
+        "time": "T+4ms",
+        "event": "Authentication evaluation: SPF=PASS, DKIM=PASS, DMARC=PASS",
         "status": "success"
       },
       {
-        "time": "T+12ms",
-        "event": "Heuristic 200+ threat matrix score: 0/100",
+        "time": "T+10ms",
+        "event": "Multi-Aspect forensic verification rating: 0/100",
         "status": "success"
       }
     ],
+    "deepAudit": {
+      "passesPassed": 8,
+      "totalPasses": 8,
+      "overallAuditVerdict": "CLEAN_VERIFIED",
+      "passes": [
+        {
+          "passId": "PASS-1",
+          "name": "RFC 8617 ARC Chain of Custody",
+          "category": "Cryptographic Protocol",
+          "status": "CLEAN",
+          "headline": "Direct SMTP (No Intermediate Forwarder)",
+          "technicalDetails": "No ARC authentication headers found. Direct SMTP transmission.",
+          "scoreImpact": 0
+        },
+        {
+          "passId": "PASS-2",
+          "name": "FCrDNS & Transit Hop Telemetry",
+          "category": "Network Infrastructure",
+          "status": "VERIFIED",
+          "headline": "Forward-Confirmed rDNS Verified",
+          "technicalDetails": "Verified MTA transmission relay (1 transit hops, estimated latency: 142ms).",
+          "scoreImpact": 0
+        },
+        {
+          "passId": "PASS-3",
+          "name": "UTR #39 Unicode Homoglyph & Punycode Audit",
+          "category": "Identity Obfuscation",
+          "status": "VERIFIED",
+          "headline": "All Domain Characters Normalized",
+          "technicalDetails": "No Unicode confusables, Cyrillic substitutions, or Punycode homographs identified.",
+          "scoreImpact": 0
+        },
+        {
+          "passId": "PASS-4",
+          "name": "Zero-Font & HTML Cloaking De-obfuscation",
+          "category": "Content Defense Evasion",
+          "status": "CLEAN",
+          "headline": "Clean HTML Rendering Tree",
+          "technicalDetails": "No zero-font, white-on-white, or CSS-hidden evasion artifacts discovered.",
+          "scoreImpact": 0
+        },
+        {
+          "passId": "PASS-5",
+          "name": "Quishing & Mobile QR Vector Analysis",
+          "category": "Out-of-Band Attack Vector",
+          "status": "CLEAN",
+          "headline": "Zero Quishing Indicators Present",
+          "technicalDetails": "No mobile QR code lures or quishing behavioral directives detected.",
+          "scoreImpact": 0
+        },
+        {
+          "passId": "PASS-6",
+          "name": "SaaS Form Abuse & Cloud Infrastructure Guard",
+          "category": "Cloud Service Abuse",
+          "status": "CLEAN",
+          "headline": "Zero Malicious Cloud SaaS Abuse",
+          "technicalDetails": "No abuse of legitimate cloud SaaS or free hosting platforms discovered.",
+          "scoreImpact": 0
+        },
+        {
+          "passId": "PASS-7",
+          "name": "HTML Smuggling & In-Memory Dropper Probe",
+          "category": "Active Malware Delivery",
+          "status": "CLEAN",
+          "headline": "No Client-Side Binary Smuggling",
+          "technicalDetails": "No browser memory payload assembly or HTML smuggling routines discovered.",
+          "scoreImpact": 0
+        },
+        {
+          "passId": "PASS-8",
+          "name": "MITRE ATT&CK Enterprise Matrix Alignment",
+          "category": "Adversary Tactics Attribution",
+          "status": "VERIFIED",
+          "headline": "Zero Threat Actor Tactics Observed",
+          "technicalDetails": "Full behavioral compliance with clean enterprise communication profiles.",
+          "scoreImpact": 0
+        }
+      ],
+      "arc": {
+        "status": "NONE",
+        "chainValidation": "cv=none",
+        "sealCount": 0,
+        "details": "No ARC authentication headers found. Direct SMTP transmission."
+      },
+      "fcrdns": {
+        "status": "VERIFIED",
+        "clientIp": "54.187.174.169",
+        "ptrRecord": "54.187.174.169.in-addr.arpa",
+        "hopCount": 1,
+        "latencyMs": 142,
+        "isResidential": false,
+        "details": "Verified MTA transmission relay (1 transit hops, estimated latency: 142ms)."
+      },
+      "homoglyphs": {
+        "detected": false,
+        "confusables": [],
+        "details": "No Unicode confusables, Cyrillic substitutions, or Punycode homographs identified."
+      },
+      "htmlCloaking": {
+        "detected": false,
+        "cloakedSnippets": [],
+        "techniques": [],
+        "details": "No zero-font, white-on-white, or CSS-hidden evasion artifacts discovered."
+      },
+      "quishing": {
+        "detected": false,
+        "qrSignaturesFound": [],
+        "details": "No mobile QR code lures or quishing behavioral directives detected."
+      },
+      "saasAbuse": {
+        "detected": false,
+        "abusedPlatform": null,
+        "portalUrl": null,
+        "details": "No abuse of legitimate cloud SaaS or free hosting platforms discovered."
+      },
+      "htmlSmuggling": {
+        "detected": false,
+        "payloadType": null,
+        "details": "No browser memory payload assembly or HTML smuggling routines discovered."
+      },
+      "mitreMapping": []
+    },
     "mitreAttack": []
   },
   {
-    "id": "eml-muinopf1",
+    "id": "eml-qrma6s9",
     "title": "Action Required: Your Google Workspace account will be suspended within 24 hours",
     "shortBadge": "🚨 Critical Threat",
-    "userFriendlyCategory": "Brand Impersonation / BEC",
-    "threatScore": 90,
+    "userFriendlyCategory": "Brand Impersonation / Spoof",
+    "threatScore": 100,
     "severity": "critical",
     "severityLabel": "Critical Threat (Red)",
     "isThreat": true,
     "simpleTakeaway": "Critical Threat (Red): \"Action Required: Your Google Workspace account will be suspended within 24 hours\". Homoglyph Substitution: Hostile domain \"g00gle-security.xyz\" mimicking Google (+25). Weaponized link endpoint: g00gle-security.xyz (+25).",
     "whatHappened": [
       "Sender: alert@g00gle-security.xyz (Google Workspace Admin)",
-      "Live DNS checks: SPF=FAIL, DKIM=FAIL, DMARC=FAIL",
-      "Extracted 1 link(s) and 0 attachment(s).",
-      "Forensic Vector Breakdown: Auth=15/15, Identity=25/25, URLs=25/25, Attachments=0/25, Semantics=0/20 | Trust Credits=-0"
+      "Cryptographic posture: SPF=FAIL (SPF Sender Verification Failed (Unauthorized Sending Host)) | DKIM=FAIL | DMARC=FAIL",
+      "Extracted 1 link(s) and 0 attachment(s) from payload.",
+      "Forensic Vector Breakdown: Auth=15/15, Identity=25/25, URLs=25/25, Attachments=0/25, Semantics=14/20 | Trust Credits=-0"
     ],
     "scoringBreakdown": {
       "authentication": {
         "score": 15,
         "max": 15,
         "details": [
-          "SPF Hard Fail: Sending IP not authorized in domain DNS (+12)",
-          "DKIM Signature Verification Failed: Cryptographic seal broken (+12)",
-          "DMARC Alignment Violated: Identifier alignment failed (+15)"
+          "SPF Verification Failed: IP not authorized in domain DNS (+12)",
+          "DKIM Cryptographic Verification Failed (+12)",
+          "DMARC Alignment Violated (+15)"
         ]
       },
       "identity": {
@@ -358,14 +625,18 @@
         "max": 25,
         "details": []
       },
-      "semantics": {
-        "score": 0,
+      "nlp": {
+        "score": 14,
         "max": 20,
-        "details": []
+        "details": [
+          "TF-IDF NLP Features: Flagged 2 discriminative n-grams (\"action required\", \"suspended\")",
+          "Coercive urgency / credential harvesting trigger matched (+14)"
+        ]
       },
       "synergy": {
-        "score": 18,
+        "score": 38,
         "details": [
+          "Compound Attack: Unauthenticated origin combined with credential harvesting pressure (+20)",
           "Compound Attack: Disposable TLD hosting confirmed phishing endpoint (+18)"
         ]
       },
@@ -373,28 +644,26 @@
         "score": 0,
         "details": []
       },
-      "finalThreatScore": 90,
+      "finalThreatScore": 100,
       "hardOverrideTriggered": true,
       "hardOverrideReason": "Critical Credential Harvester Override: Lookalike domain with phishing endpoint"
     },
-    "whatToDo": "Quarantine email immediately. Block sender IP and domain. Do not click links or execute attachments.",
+    "whatToDo": "Quarantine message immediately. Block sender IP & domain. Do not interact with links or attachments.",
     "sender": {
       "displayName": "Google Workspace Admin",
       "email": "alert@g00gle-security.xyz",
       "envelopeFrom": "alert@g00gle-security.xyz",
       "replyTo": "credential-drop@gmail.com",
-      "originIp": "0.0.0.0",
-      "asn": "AS-UNRESOLVED",
-      "location": "Unresolved City, Unresolved Country",
-      "lat": null,
-      "lng": null,
-      "reverseDns": "None (No PTR record)",
+      "originIp": "194.26.29.112",
+      "asn": "AS-DIRECT (194.26.29.112)",
+      "location": "External Origin",
+      "reverseDns": "194.26.29.112.in-addr.arpa",
       "isSpoofed": true,
       "spoofType": "Homoglyph Substitution: Hostile domain \"g00gle-security.xyz\" mimicking Google"
     },
     "recipient": {
       "email": "target@enterprise.com",
-      "department": "Enterprise Security Posture",
+      "department": "Corporate Security Operations",
       "targetHost": "mx1.enterprise.local"
     },
     "metadata": {
@@ -409,22 +678,22 @@
         "status": "FAIL",
         "exists": false,
         "friendlyName": "SPF (Sender Identity Check)",
-        "explanation": "Queries authoritative DNS TXT records to verify if the sending IP is authorized.",
-        "message": "SPF check failed: sending IP is not authorized by g00gle-security.xyz"
+        "explanation": "Queries domain DNS records to verify if the sending server IP is authorized.",
+        "message": "SPF Sender Verification Failed (Unauthorized Sending Host)"
       },
       "dkim": {
         "status": "FAIL",
         "exists": false,
         "friendlyName": "DKIM (Cryptographic Anti-Tamper Seal)",
         "explanation": "Validates public key cryptographic signature against sender domain DNS.",
-        "message": "DKIM cryptographic verification failed for g00gle-security.xyz"
+        "message": "DKIM Cryptographic Signature Missing or Tampered"
       },
       "dmarc": {
         "status": "FAIL",
         "exists": false,
         "friendlyName": "DMARC (Domain Rule Alignment)",
         "explanation": "Enforces domain policy for SPF/DKIM alignment and recipient protection.",
-        "message": "DMARC policy failed for g00gle-security.xyz"
+        "message": "DMARC Policy Alignment Violated"
       }
     },
     "urls": [
@@ -432,62 +701,584 @@
         "url": "https://g00gle-security.xyz/login-portal/verify-account",
         "domain": "g00gle-security.xyz",
         "risk": "Critical",
-        "vtScore": "36/89 Malicious (Confirmed Phishing Endpoint)",
-        "ip": "Unresolved Host",
+        "vtScore": "34/89 Malicious (Brand Impersonation / Hostile)",
+        "ip": "185.220.101.5",
         "domainAge": "2 days old (Burner Domain)",
         "isPunycode": false
       }
     ],
     "attachments": [],
     "hashes": {
-      "sha256": "76dae60b099bf90150aea793ab6c49f9b8abf2e79ee65c4477d29e3f84085dd5",
-      "md5": "9e9876e12d9cfb0bd4a274714c1a0545"
+      "sha256": "9f83acde7821034459012bbde899120c8f1e8432170498aefb098172c91200fa",
+      "md5": "8f12a64c8d9e72b4510fa9c1782e44d1"
+    },
+    "nlpTfidf": {
+      "linguisticThreatScore": 51,
+      "topFeatures": [
+        {
+          "term": "action required",
+          "tf": 0.0241,
+          "idf": 4.52,
+          "tfidf": 1.0892,
+          "category": "urgency",
+          "weightDescription": "TF: 2.4% × IDF: 4.52 → TF-IDF: 1.0892"
+        },
+        {
+          "term": "suspended",
+          "tf": 0.012,
+          "idf": 3.78,
+          "tfidf": 0.4554,
+          "category": "urgency",
+          "weightDescription": "TF: 1.2% × IDF: 3.78 → TF-IDF: 0.4554"
+        }
+      ],
+      "dominantCategory": "Coercive Urgency & Pressure",
+      "linguisticVerdict": "Moderate linguistic concern: Identified suspicious n-grams (\"action required\", \"suspended\").",
+      "tokenCount": 83,
+      "lexicalDiversity": 0.75,
+      "urgencyDensity": 3.6
     },
     "threatVerdict": {
-      "headline": "Malicious Vector Intercepted by ThreatLens AI",
-      "confidence": 99.1,
+      "headline": "Malicious Email Vector Intercepted",
+      "confidence": 98.8,
       "analysis": [
-        "Sender identity \"alert@g00gle-security.xyz\" cross-referenced with live DNS records.",
-        "Cryptographic posture: SPF FAIL | DKIM FAIL | DMARC FAIL.",
-        "Extracted 1 web links and 0 attachments scanned."
+        "Sender identity \"alert@g00gle-security.xyz\" inspected across all 7 forensic security dimensions.",
+        "Authentication posture: SPF FAIL | DKIM FAIL | DMARC FAIL.",
+        "Extracted 1 link(s) and 0 attachment(s).",
+        "Multi-Aspect Verification: Authenticity & Trust Score = 100/100."
       ],
-      "recommendation": "Quarantine message and isolate headers."
+      "recommendation": "Quarantine email and block sender host."
     },
     "timeline": [
       {
         "time": "T+0ms",
-        "event": "Inbound connection parsed from 0.0.0.0",
+        "event": "Inbound connection parsed from 194.26.29.112",
         "status": "info"
       },
       {
-        "time": "T+5ms",
-        "event": "Authoritative DNS resolution (SPF/DMARC): FAIL/FAIL",
+        "time": "T+4ms",
+        "event": "Authentication evaluation: SPF=FAIL, DKIM=FAIL, DMARC=FAIL",
         "status": "danger"
       },
       {
-        "time": "T+12ms",
-        "event": "Heuristic 200+ threat matrix score: 90/100",
+        "time": "T+10ms",
+        "event": "Multi-Aspect forensic verification rating: 100/100",
         "status": "danger"
       }
     ],
+    "deepAudit": {
+      "passesPassed": 7,
+      "totalPasses": 8,
+      "overallAuditVerdict": "CRITICAL_THREAT_CONFIRMED",
+      "passes": [
+        {
+          "passId": "PASS-1",
+          "name": "RFC 8617 ARC Chain of Custody",
+          "category": "Cryptographic Protocol",
+          "status": "CLEAN",
+          "headline": "Direct SMTP (No Intermediate Forwarder)",
+          "technicalDetails": "No ARC authentication headers found. Direct SMTP transmission.",
+          "scoreImpact": 0
+        },
+        {
+          "passId": "PASS-2",
+          "name": "FCrDNS & Transit Hop Telemetry",
+          "category": "Network Infrastructure",
+          "status": "VERIFIED",
+          "headline": "Forward-Confirmed rDNS Verified",
+          "technicalDetails": "Verified MTA transmission relay (1 transit hops, estimated latency: 142ms).",
+          "scoreImpact": 0
+        },
+        {
+          "passId": "PASS-3",
+          "name": "UTR #39 Unicode Homoglyph & Punycode Audit",
+          "category": "Identity Obfuscation",
+          "status": "VERIFIED",
+          "headline": "All Domain Characters Normalized",
+          "technicalDetails": "No Unicode confusables, Cyrillic substitutions, or Punycode homographs identified.",
+          "scoreImpact": 0
+        },
+        {
+          "passId": "PASS-4",
+          "name": "Zero-Font & HTML Cloaking De-obfuscation",
+          "category": "Content Defense Evasion",
+          "status": "CLEAN",
+          "headline": "Clean HTML Rendering Tree",
+          "technicalDetails": "No zero-font, white-on-white, or CSS-hidden evasion artifacts discovered.",
+          "scoreImpact": 0
+        },
+        {
+          "passId": "PASS-5",
+          "name": "Quishing & Mobile QR Vector Analysis",
+          "category": "Out-of-Band Attack Vector",
+          "status": "CLEAN",
+          "headline": "Zero Quishing Indicators Present",
+          "technicalDetails": "No mobile QR code lures or quishing behavioral directives detected.",
+          "scoreImpact": 0
+        },
+        {
+          "passId": "PASS-6",
+          "name": "SaaS Form Abuse & Cloud Infrastructure Guard",
+          "category": "Cloud Service Abuse",
+          "status": "CLEAN",
+          "headline": "Zero Malicious Cloud SaaS Abuse",
+          "technicalDetails": "No abuse of legitimate cloud SaaS or free hosting platforms discovered.",
+          "scoreImpact": 0
+        },
+        {
+          "passId": "PASS-7",
+          "name": "HTML Smuggling & In-Memory Dropper Probe",
+          "category": "Active Malware Delivery",
+          "status": "CLEAN",
+          "headline": "No Client-Side Binary Smuggling",
+          "technicalDetails": "No browser memory payload assembly or HTML smuggling routines discovered.",
+          "scoreImpact": 0
+        },
+        {
+          "passId": "PASS-8",
+          "name": "MITRE ATT&CK Enterprise Matrix Alignment",
+          "category": "Adversary Tactics Attribution",
+          "status": "CRITICAL",
+          "headline": "2 MITRE ATT&CK Techniques Mapped",
+          "technicalDetails": "Attributed to adversary tactics: T1036.005 (Masquerading: Match Legitimate Name or Location), T1204.001 (User Execution: Malicious Link).",
+          "scoreImpact": 12,
+          "mitreCode": "T1036.005"
+        }
+      ],
+      "arc": {
+        "status": "NONE",
+        "chainValidation": "cv=none",
+        "sealCount": 0,
+        "details": "No ARC authentication headers found. Direct SMTP transmission."
+      },
+      "fcrdns": {
+        "status": "VERIFIED",
+        "clientIp": "194.26.29.112",
+        "ptrRecord": "194.26.29.112.in-addr.arpa",
+        "hopCount": 1,
+        "latencyMs": 142,
+        "isResidential": false,
+        "details": "Verified MTA transmission relay (1 transit hops, estimated latency: 142ms)."
+      },
+      "homoglyphs": {
+        "detected": false,
+        "confusables": [],
+        "details": "No Unicode confusables, Cyrillic substitutions, or Punycode homographs identified."
+      },
+      "htmlCloaking": {
+        "detected": false,
+        "cloakedSnippets": [],
+        "techniques": [],
+        "details": "No zero-font, white-on-white, or CSS-hidden evasion artifacts discovered."
+      },
+      "quishing": {
+        "detected": false,
+        "qrSignaturesFound": [],
+        "details": "No mobile QR code lures or quishing behavioral directives detected."
+      },
+      "saasAbuse": {
+        "detected": false,
+        "abusedPlatform": null,
+        "portalUrl": null,
+        "details": "No abuse of legitimate cloud SaaS or free hosting platforms discovered."
+      },
+      "htmlSmuggling": {
+        "detected": false,
+        "payloadType": null,
+        "details": "No browser memory payload assembly or HTML smuggling routines discovered."
+      },
+      "mitreMapping": [
+        {
+          "techniqueId": "T1036.005",
+          "name": "Masquerading: Match Legitimate Name or Location",
+          "tactic": "Defense Evasion",
+          "evidence": "Sender identity spoofing: Google Workspace Admin <alert@g00gle-security.xyz>"
+        },
+        {
+          "techniqueId": "T1204.001",
+          "name": "User Execution: Malicious Link",
+          "tactic": "Execution",
+          "evidence": "Coercive call-to-action directing to confirmed phishing destination"
+        }
+      ]
+    },
     "mitreAttack": [
       {
+        "id": "T1036.005",
+        "name": "Masquerading: Match Legitimate Name or Location",
+        "tactic": "Defense Evasion"
+      },
+      {
+        "id": "T1204.001",
+        "name": "User Execution: Malicious Link",
+        "tactic": "Execution"
+      }
+    ]
+  },
+  {
+    "id": "eml-5fyqxle",
+    "title": "CRITICAL: Mandatory 2FA Re-Authentication - Scan QR Code",
+    "shortBadge": "🚨 Critical Threat",
+    "userFriendlyCategory": "Brand Impersonation / Spoof",
+    "threatScore": 100,
+    "severity": "critical",
+    "severityLabel": "Critical Threat (Red)",
+    "isThreat": true,
+    "simpleTakeaway": "Critical Threat (Red): \"CRITICAL: Mandatory 2FA Re-Authentication - Scan QR Code\". Homoglyph Substitution: Hostile domain \"m1crosoft-security.top\" mimicking Microsoft 365 (+25). Quishing Attack Vector: Mobile QR Code Credential Lure Detected (+22).",
+    "whatHappened": [
+      "Sender: admin@m1crosoft-security.top (Corporate IT Support)",
+      "Cryptographic posture: SPF=FAIL (SPF Sender Verification Failed (Unauthorized Sending Host)) | DKIM=FAIL | DMARC=FAIL",
+      "Extracted 1 link(s) and 0 attachment(s) from payload.",
+      "Forensic Vector Breakdown: Auth=15/15, Identity=25/25, URLs=0/25, Attachments=0/25, Semantics=0/20 | Trust Credits=-0"
+    ],
+    "scoringBreakdown": {
+      "authentication": {
+        "score": 15,
+        "max": 15,
+        "details": [
+          "SPF Verification Failed: IP not authorized in domain DNS (+12)",
+          "DKIM Cryptographic Verification Failed (+12)",
+          "DMARC Alignment Violated (+15)"
+        ]
+      },
+      "identity": {
+        "score": 25,
+        "max": 25,
+        "details": [
+          "Homoglyph Substitution: Hostile domain \"m1crosoft-security.top\" mimicking Microsoft 365 (+25)"
+        ]
+      },
+      "urls": {
+        "score": 0,
+        "max": 25,
+        "details": []
+      },
+      "attachments": {
+        "score": 0,
+        "max": 25,
+        "details": []
+      },
+      "nlp": {
+        "score": 0,
+        "max": 20,
+        "details": []
+      },
+      "synergy": {
+        "score": 85,
+        "details": [
+          "Quishing Attack Vector: Mobile QR Code Credential Lure Detected (+22)",
+          "Cloud Abuse: Weaponized free Google Forms form credential lure (+25)",
+          "Evasion Technique: Zero-font / CSS white-on-white text cloaking (+18)",
+          "Relay Infrastructure: Direct-to-MX delivery from residential consumer botnet IP (+20)"
+        ]
+      },
+      "trustCredits": {
+        "score": 0,
+        "details": []
+      },
+      "finalThreatScore": 100,
+      "hardOverrideTriggered": true,
+      "hardOverrideReason": "Critical Quishing Override: Mobile QR credential bypass lure identified"
+    },
+    "whatToDo": "Quarantine message immediately. Block sender IP & domain. Do not interact with links or attachments.",
+    "sender": {
+      "displayName": "Corporate IT Support",
+      "email": "admin@m1crosoft-security.top",
+      "envelopeFrom": "admin@m1crosoft-security.top",
+      "replyTo": "admin@m1crosoft-security.top",
+      "originIp": "82.12.99.14",
+      "asn": "AS-DIRECT (82.12.99.14)",
+      "location": "External Origin",
+      "reverseDns": "82.12.99.14.in-addr.arpa",
+      "isSpoofed": true,
+      "spoofType": "Homoglyph Substitution: Hostile domain \"m1crosoft-security.top\" mimicking Microsoft 365"
+    },
+    "recipient": {
+      "email": "victim@enterprise.com",
+      "department": "Corporate Security Operations",
+      "targetHost": "mx1.enterprise.local"
+    },
+    "metadata": {
+      "subject": "CRITICAL: Mandatory 2FA Re-Authentication - Scan QR Code",
+      "date": "Fri, 26 Sep 2026 14:00:00 +0000",
+      "messageId": "<quish-99124@evil-mta>",
+      "userAgent": "Standard Enterprise Mailer",
+      "contentType": "text/html; charset=UTF-8"
+    },
+    "auth": {
+      "spf": {
+        "status": "FAIL",
+        "exists": false,
+        "friendlyName": "SPF (Sender Identity Check)",
+        "explanation": "Queries domain DNS records to verify if the sending server IP is authorized.",
+        "message": "SPF Sender Verification Failed (Unauthorized Sending Host)"
+      },
+      "dkim": {
+        "status": "FAIL",
+        "exists": false,
+        "friendlyName": "DKIM (Cryptographic Anti-Tamper Seal)",
+        "explanation": "Validates public key cryptographic signature against sender domain DNS.",
+        "message": "DKIM Cryptographic Signature Missing or Tampered"
+      },
+      "dmarc": {
+        "status": "FAIL",
+        "exists": false,
+        "friendlyName": "DMARC (Domain Rule Alignment)",
+        "explanation": "Enforces domain policy for SPF/DKIM alignment and recipient protection.",
+        "message": "DMARC Policy Alignment Violated"
+      }
+    },
+    "urls": [
+      {
+        "url": "https://forms.gle/xY8213FakeMicrosoftLogin",
+        "domain": "forms.gle",
+        "risk": "Low",
+        "vtScore": "0/89 Clean (Verified Host)",
+        "ip": "172.67.140.22",
+        "domainAge": "Standard Web Domain",
+        "isPunycode": false
+      }
+    ],
+    "attachments": [],
+    "hashes": {
+      "sha256": "9f83acde7821034459012bbde899120c8f1e8432170498aefb098172c91200fa",
+      "md5": "8f12a64c8d9e72b4510fa9c1782e44d1"
+    },
+    "nlpTfidf": {
+      "linguisticThreatScore": 2,
+      "topFeatures": [],
+      "dominantCategory": "Benign / Normal Discourse",
+      "linguisticVerdict": "Normal linguistic profile. Low semantic deception markers detected.",
+      "tokenCount": 90,
+      "lexicalDiversity": 0.83,
+      "urgencyDensity": 0
+    },
+    "threatVerdict": {
+      "headline": "Malicious Email Vector Intercepted",
+      "confidence": 98.8,
+      "analysis": [
+        "Sender identity \"admin@m1crosoft-security.top\" inspected across all 7 forensic security dimensions.",
+        "Authentication posture: SPF FAIL | DKIM FAIL | DMARC FAIL.",
+        "Extracted 1 link(s) and 0 attachment(s).",
+        "Multi-Aspect Verification: Authenticity & Trust Score = 100/100."
+      ],
+      "recommendation": "Quarantine email and block sender host."
+    },
+    "timeline": [
+      {
+        "time": "T+0ms",
+        "event": "Inbound connection parsed from 82.12.99.14",
+        "status": "info"
+      },
+      {
+        "time": "T+4ms",
+        "event": "Authentication evaluation: SPF=FAIL, DKIM=FAIL, DMARC=FAIL",
+        "status": "danger"
+      },
+      {
+        "time": "T+10ms",
+        "event": "Multi-Aspect forensic verification rating: 100/100",
+        "status": "danger"
+      }
+    ],
+    "deepAudit": {
+      "passesPassed": 3,
+      "totalPasses": 8,
+      "overallAuditVerdict": "CRITICAL_THREAT_CONFIRMED",
+      "passes": [
+        {
+          "passId": "PASS-1",
+          "name": "RFC 8617 ARC Chain of Custody",
+          "category": "Cryptographic Protocol",
+          "status": "CLEAN",
+          "headline": "Direct SMTP (No Intermediate Forwarder)",
+          "technicalDetails": "No ARC authentication headers found. Direct SMTP transmission.",
+          "scoreImpact": 0
+        },
+        {
+          "passId": "PASS-2",
+          "name": "FCrDNS & Transit Hop Telemetry",
+          "category": "Network Infrastructure",
+          "status": "CRITICAL",
+          "headline": "🚨 Botnet Residential Delivery Detected",
+          "technicalDetails": "High-Risk Relay: Sender connecting directly to enterprise MX from dynamic consumer ISP pool (82.12.99.14.in-addr.arpa). Typical botnet direct-to-MX pattern.",
+          "scoreImpact": 20,
+          "mitreCode": "T1584.004"
+        },
+        {
+          "passId": "PASS-3",
+          "name": "UTR #39 Unicode Homoglyph & Punycode Audit",
+          "category": "Identity Obfuscation",
+          "status": "VERIFIED",
+          "headline": "All Domain Characters Normalized",
+          "technicalDetails": "No Unicode confusables, Cyrillic substitutions, or Punycode homographs identified.",
+          "scoreImpact": 0
+        },
+        {
+          "passId": "PASS-4",
+          "name": "Zero-Font & HTML Cloaking De-obfuscation",
+          "category": "Content Defense Evasion",
+          "status": "CRITICAL",
+          "headline": "🚨 Hidden Anti-Analysis Text Cloaking",
+          "technicalDetails": "Definite Evasion Technique: Detected 1 hidden text segment(s) using [CSS Zero-Font / Visibility Hidden]. Attackers use this to poison NLP/Bayesian filters.",
+          "scoreImpact": 20,
+          "mitreCode": "T1027"
+        },
+        {
+          "passId": "PASS-5",
+          "name": "Quishing & Mobile QR Vector Analysis",
+          "category": "Out-of-Band Attack Vector",
+          "status": "CRITICAL",
+          "headline": "🚨 Mobile QR Phishing (Quishing) Lure",
+          "technicalDetails": "Quishing (QR Code Phishing) Vector: Email instructs recipient to scan an off-channel mobile barcode [Semantic Mobile QR Scan Directive, Inline Embedded CID Image with QR Signature] to bypass enterprise gateway inspection.",
+          "scoreImpact": 22,
+          "mitreCode": "T1566.002"
+        },
+        {
+          "passId": "PASS-6",
+          "name": "SaaS Form Abuse & Cloud Infrastructure Guard",
+          "category": "Cloud Service Abuse",
+          "status": "CRITICAL",
+          "headline": "🚨 Weaponized Google Forms Portal",
+          "technicalDetails": "Weaponized Cloud Service: Hostile authentication prompt hosted on free cloud tier \"Google Forms\" (https://forms.gle/xY8213FakeMicrosoftLogin). Attackers abuse trusted cloud domains to bypass domain reputation filters.",
+          "scoreImpact": 25,
+          "mitreCode": "T1566.003"
+        },
+        {
+          "passId": "PASS-7",
+          "name": "HTML Smuggling & In-Memory Dropper Probe",
+          "category": "Active Malware Delivery",
+          "status": "CLEAN",
+          "headline": "No Client-Side Binary Smuggling",
+          "technicalDetails": "No browser memory payload assembly or HTML smuggling routines discovered.",
+          "scoreImpact": 0
+        },
+        {
+          "passId": "PASS-8",
+          "name": "MITRE ATT&CK Enterprise Matrix Alignment",
+          "category": "Adversary Tactics Attribution",
+          "status": "CRITICAL",
+          "headline": "5 MITRE ATT&CK Techniques Mapped",
+          "technicalDetails": "Attributed to adversary tactics: T1584.004 (Compromise Infrastructure: Server / MTA), T1027 (Obfuscated Files or Information), T1566.002 (Phishing: Spearphishing Link (Quishing)), T1566.003 (Phishing: Spearphishing via Service), T1036.005 (Masquerading: Match Legitimate Name or Location).",
+          "scoreImpact": 20,
+          "mitreCode": "T1584.004"
+        }
+      ],
+      "arc": {
+        "status": "NONE",
+        "chainValidation": "cv=none",
+        "sealCount": 0,
+        "details": "No ARC authentication headers found. Direct SMTP transmission."
+      },
+      "fcrdns": {
+        "status": "DYNAMIC_IP",
+        "clientIp": "82.12.99.14",
+        "ptrRecord": "82.12.99.14.in-addr.arpa",
+        "hopCount": 1,
+        "latencyMs": 142,
+        "isResidential": true,
+        "details": "High-Risk Relay: Sender connecting directly to enterprise MX from dynamic consumer ISP pool (82.12.99.14.in-addr.arpa). Typical botnet direct-to-MX pattern."
+      },
+      "homoglyphs": {
+        "detected": false,
+        "confusables": [],
+        "details": "No Unicode confusables, Cyrillic substitutions, or Punycode homographs identified."
+      },
+      "htmlCloaking": {
+        "detected": true,
+        "cloakedSnippets": [
+          "The board of directors approved the quarterly financial statement in compliance with executive procedures."
+        ],
+        "techniques": [
+          "CSS Zero-Font / Visibility Hidden"
+        ],
+        "details": "Definite Evasion Technique: Detected 1 hidden text segment(s) using [CSS Zero-Font / Visibility Hidden]. Attackers use this to poison NLP/Bayesian filters."
+      },
+      "quishing": {
+        "detected": true,
+        "qrSignaturesFound": [
+          "Semantic Mobile QR Scan Directive",
+          "Inline Embedded CID Image with QR Signature"
+        ],
+        "details": "Quishing (QR Code Phishing) Vector: Email instructs recipient to scan an off-channel mobile barcode [Semantic Mobile QR Scan Directive, Inline Embedded CID Image with QR Signature] to bypass enterprise gateway inspection."
+      },
+      "saasAbuse": {
+        "detected": true,
+        "abusedPlatform": "Google Forms",
+        "portalUrl": "https://forms.gle/xY8213FakeMicrosoftLogin",
+        "details": "Weaponized Cloud Service: Hostile authentication prompt hosted on free cloud tier \"Google Forms\" (https://forms.gle/xY8213FakeMicrosoftLogin). Attackers abuse trusted cloud domains to bypass domain reputation filters."
+      },
+      "htmlSmuggling": {
+        "detected": false,
+        "payloadType": null,
+        "details": "No browser memory payload assembly or HTML smuggling routines discovered."
+      },
+      "mitreMapping": [
+        {
+          "techniqueId": "T1584.004",
+          "name": "Compromise Infrastructure: Server / MTA",
+          "tactic": "Resource Development",
+          "evidence": "Direct-to-MX connection from residential ISP block: 82.12.99.14"
+        },
+        {
+          "techniqueId": "T1027",
+          "name": "Obfuscated Files or Information",
+          "tactic": "Defense Evasion",
+          "evidence": "Hidden text cloaking via CSS: \"The board of directors approved the quarterly financial statement in compliance with executive procedures.\""
+        },
+        {
+          "techniqueId": "T1566.002",
+          "name": "Phishing: Spearphishing Link (Quishing)",
+          "tactic": "Initial Access",
+          "evidence": "Semantic Mobile QR Scan Directive; Inline Embedded CID Image with QR Signature"
+        },
+        {
+          "techniqueId": "T1566.003",
+          "name": "Phishing: Spearphishing via Service",
+          "tactic": "Initial Access",
+          "evidence": "Free SaaS form platform abuse: Google Forms (https://forms.gle/xY8213FakeMicrosoftLogin)"
+        },
+        {
+          "techniqueId": "T1036.005",
+          "name": "Masquerading: Match Legitimate Name or Location",
+          "tactic": "Defense Evasion",
+          "evidence": "Sender identity spoofing: Corporate IT Support <admin@m1crosoft-security.top>"
+        }
+      ]
+    },
+    "mitreAttack": [
+      {
+        "id": "T1584.004",
+        "name": "Compromise Infrastructure: Server / MTA",
+        "tactic": "Resource Development"
+      },
+      {
+        "id": "T1027",
+        "name": "Obfuscated Files or Information",
+        "tactic": "Defense Evasion"
+      },
+      {
         "id": "T1566.002",
-        "name": "Spearphishing Link",
+        "name": "Phishing: Spearphishing Link (Quishing)",
+        "tactic": "Initial Access"
+      },
+      {
+        "id": "T1566.003",
+        "name": "Phishing: Spearphishing via Service",
         "tactic": "Initial Access"
       },
       {
         "id": "T1036.005",
-        "name": "Masquerading",
+        "name": "Masquerading: Match Legitimate Name or Location",
         "tactic": "Defense Evasion"
       }
     ]
   },
   {
-    "id": "eml-muinoq0x",
+    "id": "eml-4o5lqr2",
     "title": "URGENT: Complete with DocuSign - Q3 Executive Remuneration Agreement.pdf",
     "shortBadge": "⚠️ Mild Threat",
-    "userFriendlyCategory": "Brand Impersonation / BEC",
+    "userFriendlyCategory": "Brand Impersonation / Spoof",
     "threatScore": 54,
     "severity": "medium",
     "severityLabel": "Mild Threat (Orange)",
@@ -495,8 +1286,8 @@
     "simpleTakeaway": "Mild Threat (Orange): \"URGENT: Complete with DocuSign - Q3 Executive Remuneration Agreement.pdf\". Homoglyph Substitution: Hostile domain \"docus1gn-verify-portal.top\" mimicking DocuSign (+25). Suspicious unverified link: docus1gn-verify-portal.top (+14).",
     "whatHappened": [
       "Sender: notifications@docus1gn-verify-portal.top (DocuSign Service)",
-      "Live DNS checks: SPF=FAIL, DKIM=FAIL, DMARC=FAIL",
-      "Extracted 1 link(s) and 0 attachment(s).",
+      "Cryptographic posture: SPF=FAIL (SPF Sender Verification Failed (Unauthorized Sending Host)) | DKIM=FAIL | DMARC=FAIL",
+      "Extracted 1 link(s) and 0 attachment(s) from payload.",
       "Forensic Vector Breakdown: Auth=15/15, Identity=25/25, URLs=14/25, Attachments=0/25, Semantics=0/20 | Trust Credits=-0"
     ],
     "scoringBreakdown": {
@@ -504,9 +1295,9 @@
         "score": 15,
         "max": 15,
         "details": [
-          "SPF Hard Fail: Sending IP not authorized in domain DNS (+12)",
-          "DKIM Signature Verification Failed: Cryptographic seal broken (+12)",
-          "DMARC Alignment Violated: Identifier alignment failed (+15)"
+          "SPF Verification Failed: IP not authorized in domain DNS (+12)",
+          "DKIM Cryptographic Verification Failed (+12)",
+          "DMARC Alignment Violated (+15)"
         ]
       },
       "identity": {
@@ -528,10 +1319,12 @@
         "max": 25,
         "details": []
       },
-      "semantics": {
+      "nlp": {
         "score": 0,
         "max": 20,
-        "details": []
+        "details": [
+          "TF-IDF NLP Features: Flagged 3 discriminative n-grams (\"docusign\", \"urgent\", \"sign document\")"
+        ]
       },
       "synergy": {
         "score": 0,
@@ -545,7 +1338,7 @@
       "hardOverrideTriggered": false,
       "hardOverrideReason": ""
     },
-    "whatToDo": "Quarantine email immediately. Block sender IP and domain. Do not click links or execute attachments.",
+    "whatToDo": "Quarantine message immediately. Block sender IP & domain. Do not interact with links or attachments.",
     "sender": {
       "displayName": "DocuSign Service",
       "email": "notifications@docus1gn-verify-portal.top",
@@ -553,16 +1346,14 @@
       "replyTo": "phisher@harvest-passwords.top",
       "originIp": "0.0.0.0",
       "asn": "AS-UNRESOLVED",
-      "location": "Unresolved City, Unresolved Country",
-      "lat": null,
-      "lng": null,
-      "reverseDns": "None (No PTR record)",
+      "location": "Unresolved Location",
+      "reverseDns": "relay.docus1gn-verify-portal.top",
       "isSpoofed": true,
       "spoofType": "Homoglyph Substitution: Hostile domain \"docus1gn-verify-portal.top\" mimicking DocuSign"
     },
     "recipient": {
       "email": "executive@enterprise.com",
-      "department": "Enterprise Security Posture",
+      "department": "Corporate Security Operations",
       "targetHost": "mx1.enterprise.local"
     },
     "metadata": {
@@ -577,22 +1368,22 @@
         "status": "FAIL",
         "exists": false,
         "friendlyName": "SPF (Sender Identity Check)",
-        "explanation": "Queries authoritative DNS TXT records to verify if the sending IP is authorized.",
-        "message": "SPF check failed: sending IP is not authorized by docus1gn-verify-portal.top"
+        "explanation": "Queries domain DNS records to verify if the sending server IP is authorized.",
+        "message": "SPF Sender Verification Failed (Unauthorized Sending Host)"
       },
       "dkim": {
         "status": "FAIL",
         "exists": false,
         "friendlyName": "DKIM (Cryptographic Anti-Tamper Seal)",
         "explanation": "Validates public key cryptographic signature against sender domain DNS.",
-        "message": "DKIM cryptographic verification failed for docus1gn-verify-portal.top"
+        "message": "DKIM Cryptographic Signature Missing or Tampered"
       },
       "dmarc": {
         "status": "FAIL",
         "exists": false,
         "friendlyName": "DMARC (Domain Rule Alignment)",
         "explanation": "Enforces domain policy for SPF/DKIM alignment and recipient protection.",
-        "message": "DMARC policy failed for docus1gn-verify-portal.top"
+        "message": "DMARC Policy Alignment Violated"
       }
     },
     "urls": [
@@ -600,26 +1391,61 @@
         "url": "https://docus1gn-verify-portal.top/signing/auth-login",
         "domain": "docus1gn-verify-portal.top",
         "risk": "Suspicious",
-        "vtScore": "12/89 Suspicious (NXDOMAIN Phish)",
-        "ip": "Unresolved Host",
+        "vtScore": "16/89 Suspicious (Unverified Host)",
+        "ip": "172.67.140.22",
         "domainAge": "Standard Web Domain",
         "isPunycode": false
       }
     ],
     "attachments": [],
     "hashes": {
-      "sha256": "f3a379cf31a5e42d3b6e3d3b2af74d2d178acb3fa3901813c1c4092cb055ff1b",
-      "md5": "bdfa544074b6b6f420be472470f6822c"
+      "sha256": "9f83acde7821034459012bbde899120c8f1e8432170498aefb098172c91200fa",
+      "md5": "8f12a64c8d9e72b4510fa9c1782e44d1"
+    },
+    "nlpTfidf": {
+      "linguisticThreatScore": 99,
+      "topFeatures": [
+        {
+          "term": "docusign",
+          "tf": 0.0469,
+          "idf": 4.18,
+          "tfidf": 1.9594,
+          "category": "credential_lure",
+          "weightDescription": "TF: 4.7% × IDF: 4.18 → TF-IDF: 1.9594"
+        },
+        {
+          "term": "urgent",
+          "tf": 0.0313,
+          "idf": 3.42,
+          "tfidf": 1.0688,
+          "category": "urgency",
+          "weightDescription": "TF: 3.1% × IDF: 3.42 → TF-IDF: 1.0688"
+        },
+        {
+          "term": "sign document",
+          "tf": 0.0156,
+          "idf": 4.62,
+          "tfidf": 0.7219,
+          "category": "credential_lure",
+          "weightDescription": "TF: 1.6% × IDF: 4.62 → TF-IDF: 0.7219"
+        }
+      ],
+      "dominantCategory": "Credential Harvesting Lure",
+      "linguisticVerdict": "High-risk linguistic anomaly detected: Predominant markers for Credential Harvesting Lure. Elevated TF-IDF density indicates targeted social engineering.",
+      "tokenCount": 64,
+      "lexicalDiversity": 0.77,
+      "urgencyDensity": 3.1
     },
     "threatVerdict": {
-      "headline": "Malicious Vector Intercepted by ThreatLens AI",
-      "confidence": 99.1,
+      "headline": "Malicious Email Vector Intercepted",
+      "confidence": 98.8,
       "analysis": [
-        "Sender identity \"notifications@docus1gn-verify-portal.top\" cross-referenced with live DNS records.",
-        "Cryptographic posture: SPF FAIL | DKIM FAIL | DMARC FAIL.",
-        "Extracted 1 web links and 0 attachments scanned."
+        "Sender identity \"notifications@docus1gn-verify-portal.top\" inspected across all 7 forensic security dimensions.",
+        "Authentication posture: SPF FAIL | DKIM FAIL | DMARC FAIL.",
+        "Extracted 1 link(s) and 0 attachment(s).",
+        "Multi-Aspect Verification: Authenticity & Trust Score = 54/100."
       ],
-      "recommendation": "Quarantine message and isolate headers."
+      "recommendation": "Quarantine email and block sender host."
     },
     "timeline": [
       {
@@ -628,25 +1454,150 @@
         "status": "info"
       },
       {
-        "time": "T+5ms",
-        "event": "Authoritative DNS resolution (SPF/DMARC): FAIL/FAIL",
+        "time": "T+4ms",
+        "event": "Authentication evaluation: SPF=FAIL, DKIM=FAIL, DMARC=FAIL",
         "status": "danger"
       },
       {
-        "time": "T+12ms",
-        "event": "Heuristic 200+ threat matrix score: 54/100",
+        "time": "T+10ms",
+        "event": "Multi-Aspect forensic verification rating: 54/100",
         "status": "danger"
       }
     ],
+    "deepAudit": {
+      "passesPassed": 7,
+      "totalPasses": 8,
+      "overallAuditVerdict": "SUSPICIOUS_OBSERVATIONS",
+      "passes": [
+        {
+          "passId": "PASS-1",
+          "name": "RFC 8617 ARC Chain of Custody",
+          "category": "Cryptographic Protocol",
+          "status": "CLEAN",
+          "headline": "Direct SMTP (No Intermediate Forwarder)",
+          "technicalDetails": "No ARC authentication headers found. Direct SMTP transmission.",
+          "scoreImpact": 0
+        },
+        {
+          "passId": "PASS-2",
+          "name": "FCrDNS & Transit Hop Telemetry",
+          "category": "Network Infrastructure",
+          "status": "VERIFIED",
+          "headline": "Forward-Confirmed rDNS Verified",
+          "technicalDetails": "Verified MTA transmission relay (1 transit hops, estimated latency: 142ms).",
+          "scoreImpact": 0
+        },
+        {
+          "passId": "PASS-3",
+          "name": "UTR #39 Unicode Homoglyph & Punycode Audit",
+          "category": "Identity Obfuscation",
+          "status": "VERIFIED",
+          "headline": "All Domain Characters Normalized",
+          "technicalDetails": "No Unicode confusables, Cyrillic substitutions, or Punycode homographs identified.",
+          "scoreImpact": 0
+        },
+        {
+          "passId": "PASS-4",
+          "name": "Zero-Font & HTML Cloaking De-obfuscation",
+          "category": "Content Defense Evasion",
+          "status": "CLEAN",
+          "headline": "Clean HTML Rendering Tree",
+          "technicalDetails": "No zero-font, white-on-white, or CSS-hidden evasion artifacts discovered.",
+          "scoreImpact": 0
+        },
+        {
+          "passId": "PASS-5",
+          "name": "Quishing & Mobile QR Vector Analysis",
+          "category": "Out-of-Band Attack Vector",
+          "status": "CLEAN",
+          "headline": "Zero Quishing Indicators Present",
+          "technicalDetails": "No mobile QR code lures or quishing behavioral directives detected.",
+          "scoreImpact": 0
+        },
+        {
+          "passId": "PASS-6",
+          "name": "SaaS Form Abuse & Cloud Infrastructure Guard",
+          "category": "Cloud Service Abuse",
+          "status": "CLEAN",
+          "headline": "Zero Malicious Cloud SaaS Abuse",
+          "technicalDetails": "No abuse of legitimate cloud SaaS or free hosting platforms discovered.",
+          "scoreImpact": 0
+        },
+        {
+          "passId": "PASS-7",
+          "name": "HTML Smuggling & In-Memory Dropper Probe",
+          "category": "Active Malware Delivery",
+          "status": "CLEAN",
+          "headline": "No Client-Side Binary Smuggling",
+          "technicalDetails": "No browser memory payload assembly or HTML smuggling routines discovered.",
+          "scoreImpact": 0
+        },
+        {
+          "passId": "PASS-8",
+          "name": "MITRE ATT&CK Enterprise Matrix Alignment",
+          "category": "Adversary Tactics Attribution",
+          "status": "WARNING",
+          "headline": "1 MITRE ATT&CK Techniques Mapped",
+          "technicalDetails": "Attributed to adversary tactics: T1036.005 (Masquerading: Match Legitimate Name or Location).",
+          "scoreImpact": 6,
+          "mitreCode": "T1036.005"
+        }
+      ],
+      "arc": {
+        "status": "NONE",
+        "chainValidation": "cv=none",
+        "sealCount": 0,
+        "details": "No ARC authentication headers found. Direct SMTP transmission."
+      },
+      "fcrdns": {
+        "status": "VERIFIED",
+        "clientIp": "0.0.0.0",
+        "ptrRecord": "0.0.0.0.in-addr.arpa",
+        "hopCount": 1,
+        "latencyMs": 142,
+        "isResidential": false,
+        "details": "Verified MTA transmission relay (1 transit hops, estimated latency: 142ms)."
+      },
+      "homoglyphs": {
+        "detected": false,
+        "confusables": [],
+        "details": "No Unicode confusables, Cyrillic substitutions, or Punycode homographs identified."
+      },
+      "htmlCloaking": {
+        "detected": false,
+        "cloakedSnippets": [],
+        "techniques": [],
+        "details": "No zero-font, white-on-white, or CSS-hidden evasion artifacts discovered."
+      },
+      "quishing": {
+        "detected": false,
+        "qrSignaturesFound": [],
+        "details": "No mobile QR code lures or quishing behavioral directives detected."
+      },
+      "saasAbuse": {
+        "detected": false,
+        "abusedPlatform": null,
+        "portalUrl": null,
+        "details": "No abuse of legitimate cloud SaaS or free hosting platforms discovered."
+      },
+      "htmlSmuggling": {
+        "detected": false,
+        "payloadType": null,
+        "details": "No browser memory payload assembly or HTML smuggling routines discovered."
+      },
+      "mitreMapping": [
+        {
+          "techniqueId": "T1036.005",
+          "name": "Masquerading: Match Legitimate Name or Location",
+          "tactic": "Defense Evasion",
+          "evidence": "Sender identity spoofing: DocuSign Service <notifications@docus1gn-verify-portal.top>"
+        }
+      ]
+    },
     "mitreAttack": [
       {
-        "id": "T1566.002",
-        "name": "Spearphishing Link",
-        "tactic": "Initial Access"
-      },
-      {
         "id": "T1036.005",
-        "name": "Masquerading",
+        "name": "Masquerading: Match Legitimate Name or Location",
         "tactic": "Defense Evasion"
       }
     ]

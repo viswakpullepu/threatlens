@@ -33,11 +33,13 @@ import {
   ChevronRight,
   Zap,
   Calculator,
-  BarChart3
+  BarChart3,
+  ScanEye
 } from 'lucide-react';
 import { ForensicReportModal } from './ForensicReportModal';
 import { parseEmailForensics } from '../engine/emailParser';
 import { analyzeEmailTextTfidf } from '../engine/nlpTfidfEngine';
+import { runDeepForensicAudit } from '../engine/deepAuditEngine';
 import { getOrCreateSessionId } from './LiveEmailInterceptor';
 import { useAuth } from '../context/AuthContext';
 
@@ -158,7 +160,7 @@ export const ForensicsView: React.FC = () => {
     }
   });
   const [selectedEmail, setSelectedEmail] = useState<any>(null);
-  const [activeDeepTab, setActiveDeepTab] = useState<'summary' | 'overview' | 'headers' | 'timeline' | 'iocs' | 'mitre'>('summary');
+  const [activeDeepTab, setActiveDeepTab] = useState<'summary' | 'audit' | 'overview' | 'headers' | 'timeline' | 'iocs' | 'mitre'>('summary');
   const [isRawModalOpen, setIsRawModalOpen] = useState(false);
   const [rawEmailText, setRawEmailText] = useState('');
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
@@ -1054,6 +1056,27 @@ export const ForensicsView: React.FC = () => {
                 = {score} / 100
               </div>
             </div>
+
+            {/* Quick Access to 8-Pass Deep Security Audit */}
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100 text-xs">
+              <div className="flex items-center gap-2 text-slate-600">
+                <ScanEye className="w-4 h-4 text-indigo-600 shrink-0" />
+                <span className="font-medium text-[11px] sm:text-xs">
+                  8-Pass Deep Multi-Vector Analysis Active (ARC • FCrDNS • Homoglyphs • Quishing • HTML Smuggling • Zero-Font)
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  setActiveDeepTab('audit');
+                  const el = document.getElementById('deep-forensics-tabs');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="px-3.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl border border-indigo-200 transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-2xs text-xs"
+              >
+                <span>Inspect 8-Pass Deep Audit Clearance</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         );
       })()}
@@ -1361,13 +1384,14 @@ export const ForensicsView: React.FC = () => {
           })()}
 
           {/* 6. DEEP TECHNICAL FORENSICS TABS */}
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+          <div id="deep-forensics-tabs" className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
             
             {/* Navigation Tabs */}
             <div className="flex border-b border-slate-200 px-6 bg-slate-50/50">
               <nav className="flex flex-wrap gap-4 sm:gap-6">
                 {[
-                  { id: 'summary', label: '📖 Case Summary & Findings' },
+                  { id: 'summary', label: '📖 Case Findings' },
+                  { id: 'audit', label: '🔬 8-Pass Deep Security Audit' },
                   { id: 'overview', label: '🗺️ Origin & Geolocation' },
                   { id: 'headers', label: '📜 RFC822 Raw Headers' },
                   { id: 'timeline', label: '⏱️ Multi-Hop Timeline' },
@@ -1407,6 +1431,118 @@ export const ForensicsView: React.FC = () => {
                   </div>
                 </div>
               )}
+
+              {activeDeepTab === 'audit' && (() => {
+                const deepAudit = currentEmail.deepAudit || runDeepForensicAudit(
+                  `${currentEmail.title || ''} ${currentEmail.metadata?.subject || ''} ${currentEmail.simpleTakeaway || ''} ${(currentEmail.whatHappened || []).join(' ')}`,
+                  currentEmail
+                );
+
+                const isCritical = deepAudit.overallAuditVerdict === 'CRITICAL_THREAT_CONFIRMED';
+                const isWarning = deepAudit.overallAuditVerdict === 'SUSPICIOUS_OBSERVATIONS';
+
+                const verdictColor = isCritical
+                  ? 'bg-red-500/10 text-red-800 border-red-200'
+                  : (isWarning
+                    ? 'bg-amber-500/10 text-amber-800 border-amber-200'
+                    : 'bg-emerald-500/10 text-emerald-800 border-emerald-200');
+
+                const verdictBadge = isCritical
+                  ? '🚨 CRITICAL ADVERSARIAL THREAT CONFIRMED'
+                  : (isWarning
+                    ? '⚠️ SUSPICIOUS BEHAVIORAL ANOMALIES DETECTED'
+                    : '✅ 100% CLEARANCE: ALL 8 SECURITY PASSES VERIFIED');
+
+                return (
+                  <div className="space-y-6">
+                    {/* Audit Header Banner */}
+                    <div className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${verdictColor}`}>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <ScanEye className="w-5 h-5 text-indigo-600 shrink-0" />
+                          <h4 className="text-sm font-black tracking-tight uppercase">8-Pass Deep Multi-Vector Security Clearance</h4>
+                        </div>
+                        <p className="text-xs opacity-90 leading-relaxed">
+                          Exhaustive validation across Cryptographic Chain of Custody (RFC 8617 ARC), FCrDNS Relay Hop Trace, Unicode Confusables, CSS Cloaking, Quishing, Cloud SaaS Abuse, and Client-Side HTML Smuggling.
+                        </p>
+                      </div>
+                      <div className="shrink-0 flex flex-wrap items-center gap-2.5">
+                        <span className="text-xs font-mono font-bold px-3 py-1.5 rounded-lg bg-white/95 border border-current shadow-2xs">
+                          {deepAudit.passesPassed} / {deepAudit.totalPasses} Passes Cleared
+                        </span>
+                        <span className="text-xs font-bold px-3 py-1.5 rounded-lg bg-current/10 border border-current">
+                          {verdictBadge}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Passes Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {deepAudit.passes.map((pass: any) => {
+                        const passCritical = pass.status === 'CRITICAL';
+                        const passWarning = pass.status === 'WARNING';
+                        const passVerified = pass.status === 'VERIFIED';
+                        const badgeStyle = passCritical
+                          ? 'bg-red-100 text-red-800 border-red-300'
+                          : (passWarning
+                            ? 'bg-amber-100 text-amber-800 border-amber-300'
+                            : (passVerified ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-slate-100 text-slate-700 border-slate-300'));
+
+                        const icon = passCritical ? (
+                          <ShieldAlert className="w-3.5 h-3.5 text-red-600 animate-pulse" />
+                        ) : (passWarning ? (
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                        ) : (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        ));
+
+                        return (
+                          <div 
+                            key={pass.passId} 
+                            className={`p-4 rounded-xl border flex flex-col justify-between space-y-3 transition-all ${
+                              passCritical ? 'bg-red-50/40 border-red-200 shadow-2xs' : (passWarning ? 'bg-amber-50/30 border-amber-200' : 'bg-slate-50/60 border-slate-200')
+                            }`}
+                          >
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500">
+                                  {pass.passId} • {pass.category}
+                                </span>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${badgeStyle}`}>
+                                  {icon}
+                                  <span>{pass.status}</span>
+                                </span>
+                              </div>
+
+                              <div className="font-bold text-slate-900 text-xs">
+                                {pass.headline}
+                              </div>
+
+                              <p className="text-[11px] text-slate-600 font-mono leading-relaxed bg-white/80 p-2.5 rounded-lg border border-slate-200/80">
+                                {pass.technicalDetails}
+                              </p>
+                            </div>
+
+                            <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px] font-mono">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-slate-400">Score Impact:</span>
+                                <span className={`font-bold ${pass.scoreImpact > 0 ? 'text-red-600' : (pass.scoreImpact < 0 ? 'text-emerald-600' : 'text-slate-500')}`}>
+                                  {pass.scoreImpact > 0 ? `+${pass.scoreImpact} pts` : (pass.scoreImpact < 0 ? `${pass.scoreImpact} pts` : '0 pts (Neutral)')}
+                                </span>
+                              </div>
+                              {pass.mitreCode && (
+                                <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md border border-indigo-200 font-bold">
+                                  MITRE {pass.mitreCode}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {activeDeepTab === 'overview' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">

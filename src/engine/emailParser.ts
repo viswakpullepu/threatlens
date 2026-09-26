@@ -1,4 +1,5 @@
 import { analyzeEmailTextTfidf, NlpTfidfAnalysisResult } from './nlpTfidfEngine';
+import { runDeepForensicAudit, DeepForensicAudit } from './deepAuditEngine';
 
 export interface ParsedForensicEmail {
   id: string;
@@ -13,6 +14,7 @@ export interface ParsedForensicEmail {
   whatHappened: string[];
   whatToDo: string;
   nlpTfidf?: NlpTfidfAnalysisResult;
+  deepAudit?: DeepForensicAudit;
   sender: {
     displayName: string;
     email: string;
@@ -692,6 +694,42 @@ export function parseEmailForensics(rawInput: string, fileName = 'custom_email.e
   }
 
   // ----------------------------------------------------
+  // DEEP FORENSIC 8-PASS AUDIT EXECUTION
+  // ----------------------------------------------------
+  const deepAudit = runDeepForensicAudit(rawInput, {
+    sender: { email: senderEmail, displayName: senderDisplayName, originIp, reverseDns: `${originIp}.in-addr.arpa`, isSpoofed },
+    urls,
+    attachments,
+    isThreat: isSpoofed || hasMalwarePayload || vUrl >= 15
+  });
+
+  // Inject deep audit findings into synergy & trust calculations
+  if (deepAudit.quishing.detected) {
+    synergyScore += 22;
+    synergyDetails.push('Quishing Attack Vector: Mobile QR Code Credential Lure Detected (+22)');
+  }
+  if (deepAudit.htmlSmuggling.detected) {
+    synergyScore += 25;
+    synergyDetails.push('Active Malware Delivery: Client-side HTML Smuggling in browser memory (+25)');
+  }
+  if (deepAudit.saasAbuse.detected) {
+    synergyScore += 25;
+    synergyDetails.push(`Cloud Abuse: Weaponized free ${deepAudit.saasAbuse.abusedPlatform} form credential lure (+25)`);
+  }
+  if (deepAudit.htmlCloaking.detected) {
+    synergyScore += 18;
+    synergyDetails.push('Evasion Technique: Zero-font / CSS white-on-white text cloaking (+18)');
+  }
+  if (deepAudit.fcrdns.status === 'DYNAMIC_IP') {
+    synergyScore += 20;
+    synergyDetails.push('Relay Infrastructure: Direct-to-MX delivery from residential consumer botnet IP (+20)');
+  }
+  if (deepAudit.arc.status === 'PASS' && deepAudit.arc.chainValidation === 'cv=pass') {
+    trustCredits += 15;
+    trustDetails.push('RFC 8617 ARC Authenticated Received Chain Verified (-15)');
+  }
+
+  // ----------------------------------------------------
   // FINAL SCORE CALCULATION & CRITICAL OVERRIDES
   // ----------------------------------------------------
   let isHardOverride = false;
@@ -703,6 +741,15 @@ export function parseEmailForensics(rawInput: string, fileName = 'custom_email.e
   } else if (isTyposquat && vUrl >= 20) {
     isHardOverride = true;
     hardOverrideReason = 'Critical Credential Harvester Override: Lookalike domain with phishing endpoint';
+  } else if (deepAudit.htmlSmuggling.detected) {
+    isHardOverride = true;
+    hardOverrideReason = 'Critical HTML Smuggling Override: In-memory executable dropper identified';
+  } else if (deepAudit.quishing.detected) {
+    isHardOverride = true;
+    hardOverrideReason = 'Critical Quishing Override: Mobile QR credential bypass lure identified';
+  } else if (deepAudit.saasAbuse.detected) {
+    isHardOverride = true;
+    hardOverrideReason = `Critical Cloud Abuse Override: Weaponized ${deepAudit.saasAbuse.abusedPlatform} credential portal`;
   }
 
   let calculatedScore = 0;
@@ -841,10 +888,15 @@ export function parseEmailForensics(rawInput: string, fileName = 'custom_email.e
       { time: 'T+4ms', event: `Authentication evaluation: SPF=${spfStatus}, DKIM=${dkimStatus}, DMARC=${dmarcStatus}`, status: spfStatus === 'PASS' ? 'success' : 'danger' },
       { time: 'T+10ms', event: `Multi-Aspect forensic verification rating: ${threatScore}/100`, status: isThreat ? 'danger' : 'success' }
     ],
-    mitreAttack: isThreat ? [
-      { id: 'T1566.002', name: 'Spearphishing Link', tactic: 'Initial Access' },
-      { id: 'T1036.005', name: 'Masquerading', tactic: 'Defense Evasion' }
-    ] : []
+    deepAudit,
+    mitreAttack: isThreat ? (
+      deepAudit.mitreMapping.length > 0 
+        ? deepAudit.mitreMapping.map(m => ({ id: m.techniqueId, name: m.name, tactic: m.tactic }))
+        : [
+            { id: 'T1566.002', name: 'Spearphishing Link', tactic: 'Initial Access' },
+            { id: 'T1036.005', name: 'Masquerading', tactic: 'Defense Evasion' }
+          ]
+    ) : []
   };
 }
 
