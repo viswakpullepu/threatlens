@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { ForensicReportModal } from './ForensicReportModal';
 import { parseEmailForensics } from '../engine/emailParser';
+import { analyzeEmailTextTfidf } from '../engine/nlpTfidfEngine';
 import { getOrCreateSessionId } from './LiveEmailInterceptor';
 import { useAuth } from '../context/AuthContext';
 
@@ -914,6 +915,118 @@ export const ForensicsView: React.FC = () => {
             </div>
 
           </div>
+
+          {/* 5.5 NLP EMAIL TEXT ANALYSIS & TF-IDF FEATURE EXTRACTION */}
+          {(() => {
+            const nlpData = currentEmail.nlpTfidf || analyzeEmailTextTfidf(
+              `${currentEmail.title || ''} ${currentEmail.metadata?.subject || ''} ${currentEmail.simpleTakeaway || ''} ${(currentEmail.whatHappened || []).join(' ')}`
+            );
+            const score = nlpData.linguisticThreatScore;
+            const scoreColor = score >= 75 ? 'text-red-600' : (score >= 45 ? 'text-orange-600' : 'text-emerald-600');
+            const meterBg = score >= 75 ? 'bg-red-500' : (score >= 45 ? 'bg-orange-500' : 'bg-emerald-500');
+
+            return (
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-3">
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-purple-600" />
+                      NLP Text Analysis & TF-IDF Feature Extraction
+                    </h3>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Mathematical Term Frequency - Inverse Document Frequency vectorizer identifying suspicious linguistic & semantic patterns
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded bg-purple-50 text-purple-700 border border-purple-200">
+                      N-Gram Vectorizer (1-2)
+                    </span>
+                    <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                      TF-IDF Corpus Calibrated
+                    </span>
+                  </div>
+                </div>
+
+                {/* Score & Category Callout */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Linguistic Threat Index</span>
+                      <span className={`text-xl font-black font-mono ${scoreColor}`}>{score}/100</span>
+                    </div>
+                    <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                      <div className={`h-full ${meterBg} transition-all`} style={{ width: `${score}%` }} />
+                    </div>
+                    <p className="text-[10px] text-slate-500">Aggregated discriminative TF-IDF weight</p>
+                  </div>
+
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                    <span className="text-[10px] uppercase font-bold text-slate-400">Dominant Semantic Pattern</span>
+                    <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-purple-500" />
+                      {nlpData.dominantCategory}
+                    </div>
+                    <p className="text-[10px] text-slate-500 truncate">{nlpData.linguisticVerdict}</p>
+                  </div>
+
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1 text-xs font-mono">
+                    <span className="text-[10px] uppercase font-bold text-slate-400">Corpus Lexical Metrics</span>
+                    <div className="text-slate-800 flex justify-between">
+                      <span>Tokens Scanned:</span> <span className="font-bold">{nlpData.tokenCount}</span>
+                    </div>
+                    <div className="text-slate-800 flex justify-between">
+                      <span>Lexical Diversity (TTR):</span> <span className="font-bold">{nlpData.lexicalDiversity}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Top TF-IDF Extracted Tokens Table */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-slate-700 uppercase tracking-wider text-[11px]">
+                      Top Discriminative TF-IDF N-Grams ({nlpData.topFeatures.length})
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-400">TF × IDF = Feature Importance Weight</span>
+                  </div>
+
+                  {nlpData.topFeatures.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                      {nlpData.topFeatures.map((f, i) => {
+                        const isThreatCategory = f.category !== 'benign';
+                        const badgeStyle = isThreatCategory 
+                          ? 'bg-red-50 text-red-700 border-red-200' 
+                          : 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                        const catLabel = f.category === 'urgency' ? 'Urgency'
+                          : f.category === 'bec_financial' ? 'Financial BEC'
+                          : f.category === 'credential_lure' ? 'Credential Lure'
+                          : f.category === 'extortion_threat' ? 'Extortion'
+                          : 'Benign';
+
+                        return (
+                          <div key={i} className={`p-3 rounded-xl border text-xs font-mono flex flex-col justify-between ${badgeStyle}`}>
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="font-bold text-slate-900 truncate">"{f.term}"</span>
+                              <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-white/80 border border-current">
+                                {catLabel}
+                              </span>
+                            </div>
+                            <div className="mt-2 pt-2 border-t border-current/20 flex items-center justify-between text-[10px]">
+                              <span>TF: {(f.tf * 100).toFixed(1)}% | IDF: {f.idf}</span>
+                              <span className="font-bold">Score: {f.tfidf}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center text-slate-400 text-xs">
+                      No high-weight suspicious linguistic n-grams detected. Text body conforms to authentic communication baseline.
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* 6. DEEP TECHNICAL FORENSICS TABS */}
           <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">

@@ -1,6 +1,4 @@
-/**
- * Comprehensive Robust RFC-822 / HTML / MIME Email Forensics Parser
- */
+import { analyzeEmailTextTfidf, NlpTfidfAnalysisResult } from './nlpTfidfEngine';
 
 export interface ParsedForensicEmail {
   id: string;
@@ -14,6 +12,7 @@ export interface ParsedForensicEmail {
   simpleTakeaway: string;
   whatHappened: string[];
   whatToDo: string;
+  nlpTfidf?: NlpTfidfAnalysisResult;
   sender: {
     displayName: string;
     email: string;
@@ -538,10 +537,20 @@ export function parseEmailForensics(rawInput: string, fileName = 'custom_email.e
   domainRepScore = Math.min(25, domainRepScore);
 
   // ==========================================
-  // 10. LINGUISTIC / SOCIAL ENGINEERING SEMANTICS
+  // 10. LINGUISTIC / SOCIAL ENGINEERING SEMANTICS & TF-IDF
   // ==========================================
+  const nlpTfidfResult = analyzeEmailTextTfidf(cleanText);
   let nlpScore = 0;
   const nlpReasons: string[] = [];
+
+  // Add top TF-IDF extracted discriminative tokens to reasoning
+  if (nlpTfidfResult.topFeatures.length > 0) {
+    const topThreatFeatures = nlpTfidfResult.topFeatures.filter(f => f.category !== 'benign');
+    if (topThreatFeatures.length > 0) {
+      nlpScore += Math.round(nlpTfidfResult.linguisticThreatScore * 0.4);
+      nlpReasons.push(`TF-IDF NLP Extraction: Flagged ${topThreatFeatures.length} suspicious n-grams (${topThreatFeatures.slice(0, 3).map(f => `"${f.term}" [TF-IDF: ${f.tfidf}]`).join(', ')})`);
+    }
+  }
 
   // Extortion / Ransom threats
   if (/(webcam recorded|bitcoin wallet|hacked your computer|private key|recorded video of you|intimate video|transferred bitcoin)/i.test(cleanText)) {
@@ -686,6 +695,7 @@ export function parseEmailForensics(rawInput: string, fileName = 'custom_email.e
       sha256: '9f83acde7821034459012bbde899120c8f1e8432170498aefb098172c91200fa',
       md5: '8f12a64c8d9e72b4510fa9c1782e44d1'
     },
+    nlpTfidf: nlpTfidfResult,
     threatVerdict: {
       headline: isThreat ? 'Malicious Email Vector Intercepted' : 'Authentic Electronic Message',
       confidence: isThreat ? 98.8 : 99.4,

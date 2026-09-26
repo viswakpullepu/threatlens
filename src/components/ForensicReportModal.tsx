@@ -203,6 +203,47 @@ export const ForensicReportModal: React.FC<ForensicReportModalProps> = ({
             </div>
           </div>
 
+          {/* 2.5 NLP-Based Text Analysis & TF-IDF Feature Extraction */}
+          {(() => {
+            const nlp = email.nlpTfidf;
+            if (!nlp || !nlp.topFeatures || nlp.topFeatures.length === 0) return null;
+            return (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between pb-1 border-b border-slate-200">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    2.5. NLP-Based Email Text Analysis & TF-IDF Feature Extraction
+                  </h3>
+                  <span className="text-[10px] font-mono text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+                    Linguistic Threat: {nlp.linguisticThreatScore}/100 • Dominant: {nlp.dominantCategory}
+                  </span>
+                </div>
+
+                <table className="w-full text-left text-xs font-mono border border-slate-200 rounded">
+                  <thead className="bg-slate-100 text-slate-700">
+                    <tr>
+                      <th className="p-2 border-b border-slate-200">DISCRIMINATIVE N-GRAM</th>
+                      <th className="p-2 border-b border-slate-200">CATEGORY</th>
+                      <th className="p-2 border-b border-slate-200">TERM FREQ (TF)</th>
+                      <th className="p-2 border-b border-slate-200">INVERSE DOC FREQ (IDF)</th>
+                      <th className="p-2 border-b border-slate-200">TF-IDF WEIGHT</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {nlp.topFeatures.slice(0, 6).map((f: any, idx: number) => (
+                      <tr key={idx} className={f.category !== 'benign' ? 'bg-red-50/30' : ''}>
+                        <td className="p-2 font-bold text-slate-900">"{f.term}"</td>
+                        <td className="p-2 uppercase text-[10px] font-bold text-purple-700">{f.category}</td>
+                        <td className="p-2 text-slate-600">{(f.tf * 100).toFixed(1)}%</td>
+                        <td className="p-2 text-slate-600">{f.idf}</td>
+                        <td className="p-2 font-bold text-red-600">{f.tfidf}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
+
           {/* Indicators of Compromise (IOCs) */}
           <div className="space-y-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 pb-1 border-b border-slate-200">
@@ -305,13 +346,15 @@ export const ForensicReportModal: React.FC<ForensicReportModalProps> = ({
 
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-1">
                 <div className="flex items-center justify-between font-bold">
-                  <span className="text-slate-700">5. Social Engineering</span>
-                  <span className={email.threatScore >= 50 ? 'text-amber-600 font-mono' : 'text-emerald-600 font-mono'}>
-                    {email.threatScore >= 50 ? 'SUSPICIOUS URGENCY' : 'STANDARD TRAFFIC'}
+                  <span className="text-slate-700">5. NLP & TF-IDF Vectors</span>
+                  <span className={(email.nlpTfidf?.linguisticThreatScore ?? email.threatScore) >= 50 ? 'text-amber-600 font-mono' : 'text-emerald-600 font-mono'}>
+                    {email.nlpTfidf ? `${email.nlpTfidf.dominantCategory} (${email.nlpTfidf.linguisticThreatScore}/100)` : (email.threatScore >= 50 ? 'SUSPICIOUS URGENCY' : 'STANDARD TRAFFIC')}
                   </span>
                 </div>
                 <div className="text-[11px] text-slate-500">
-                  Extortion, BEC wire transfer, and credential deadlines
+                  {email.nlpTfidf?.topFeatures?.length 
+                    ? `Top TF-IDF: ${email.nlpTfidf.topFeatures.slice(0, 2).map((f: any) => `"${f.term}" (${f.tfidf})`).join(', ')}`
+                    : 'Extortion, BEC wire transfer, and credential deadlines'}
                 </div>
               </div>
 
