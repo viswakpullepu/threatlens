@@ -42,12 +42,34 @@ import { analyzeEmailTextTfidf } from '../engine/nlpTfidfEngine';
 import { runDeepForensicAudit } from '../engine/deepAuditEngine';
 import { getOrCreateSessionId } from './LiveEmailInterceptor';
 import { useAuth } from '../context/AuthContext';
+import { SAMPLE_EMAILS } from '../data/threatData';
 
 const BASE_STORAGE_KEY = 'threatlens_custom_emails_db';
 
 export const getEmailScoringBreakdown = (email: any) => {
-  if (email?.scoringBreakdown) {
-    return email.scoringBreakdown;
+  const sb = email?.scoringBreakdown;
+  if (sb) {
+    const nlpObj = sb.nlp || sb.semantics || { score: 0, max: 20, details: [] };
+    const authObj = sb.authentication || { score: 0, max: 15, details: [] };
+    const identObj = sb.identity || { score: 0, max: 25, details: [] };
+    const urlsObj = sb.urls || { score: 0, max: 25, details: [] };
+    const attsObj = sb.attachments || { score: 0, max: 25, details: [] };
+    const synObj = sb.synergy || { score: 0, details: [] };
+    const trustObj = sb.trustCredits || { score: 0, details: [] };
+
+    return {
+      authentication: { score: authObj.score ?? 0, max: authObj.max ?? 15, details: Array.isArray(authObj.details) ? authObj.details : [] },
+      identity: { score: identObj.score ?? 0, max: identObj.max ?? 25, details: Array.isArray(identObj.details) ? identObj.details : [] },
+      urls: { score: urlsObj.score ?? 0, max: urlsObj.max ?? 25, details: Array.isArray(urlsObj.details) ? urlsObj.details : [] },
+      attachments: { score: attsObj.score ?? 0, max: attsObj.max ?? 25, details: Array.isArray(attsObj.details) ? attsObj.details : [] },
+      nlp: { score: nlpObj.score ?? 0, max: nlpObj.max ?? 20, details: Array.isArray(nlpObj.details) ? nlpObj.details : [] },
+      semantics: { score: nlpObj.score ?? 0, max: nlpObj.max ?? 20, details: Array.isArray(nlpObj.details) ? nlpObj.details : [] },
+      synergy: { score: synObj.score ?? 0, details: Array.isArray(synObj.details) ? synObj.details : [] },
+      trustCredits: { score: trustObj.score ?? 0, details: Array.isArray(trustObj.details) ? trustObj.details : [] },
+      finalThreatScore: sb.finalThreatScore ?? email?.threatScore ?? 0,
+      hardOverrideTriggered: Boolean(sb.hardOverrideTriggered),
+      hardOverrideReason: sb.hardOverrideReason || ''
+    };
   }
   
   // Dynamic fallback calculation for legacy / raw emails
@@ -134,6 +156,7 @@ export const getEmailScoringBreakdown = (email: any) => {
     urls: { score: urlPts, max: 25, details: urlDetails },
     attachments: { score: attachPts, max: 25, details: attachDetails },
     nlp: { score: nlpPts, max: 20, details: nlpDetails },
+    semantics: { score: nlpPts, max: 20, details: nlpDetails },
     synergy: { score: synergyPts, details: synergyDetails },
     trustCredits: { score: trustPts, details: trustDetails },
     finalThreatScore: email?.threatScore ?? finalThreatScore,
@@ -151,12 +174,13 @@ export const ForensicsView: React.FC = () => {
     try {
       const cached = localStorage.getItem(STORAGE_KEY);
       const parsed = cached ? JSON.parse(cached) : [];
-      return Array.isArray(parsed) ? parsed.filter((e: any) => {
+      const cleanList = Array.isArray(parsed) ? parsed.filter((e: any) => {
         const s = e?.metadata?.subject || e?.title || e?.subject || '';
         return !s.includes('[THREATLENS ALERT]');
       }) : [];
+      return cleanList.length > 0 ? cleanList : SAMPLE_EMAILS;
     } catch (_) {
-      return [];
+      return SAMPLE_EMAILS;
     }
   });
   const [selectedEmail, setSelectedEmail] = useState<any>(null);
@@ -182,7 +206,8 @@ export const ForensicsView: React.FC = () => {
     try {
       const sid = getOrCreateSessionId();
       const res = await fetch(`/api/emails?session_id=${encodeURIComponent(sid)}&limit=1000`, {
-        headers: { 'x-session-id': sid }
+        headers: { 'x-session-id': sid },
+        credentials: 'include'
       });
       const data = await res.json();
       if (data.emails && Array.isArray(data.emails)) {
@@ -190,10 +215,12 @@ export const ForensicsView: React.FC = () => {
           const s = e?.metadata?.subject || e?.title || e?.subject || '';
           return !s.includes('[THREATLENS ALERT]');
         });
-        setCustomEmails(cleanList);
+        if (cleanList.length > 0) {
+          setCustomEmails(cleanList);
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cleanList)); } catch (_) {}
+          if (!selectedEmail) setSelectedEmail(cleanList[0]);
+        }
         if (data.nextPageToken) setNextPageToken(data.nextPageToken);
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cleanList)); } catch (_) {}
-        if (cleanList[0] && !selectedEmail) setSelectedEmail(cleanList[0]);
       }
     } catch (_) {}
   };
@@ -202,7 +229,8 @@ export const ForensicsView: React.FC = () => {
     try {
       const sid = getOrCreateSessionId();
       const res = await fetch(`/api/auth/status?session_id=${encodeURIComponent(sid)}`, {
-        headers: { 'x-session-id': sid }
+        headers: { 'x-session-id': sid },
+        credentials: 'include'
       });
       const data = await res.json();
       setOauthStatus(data);
@@ -1572,7 +1600,7 @@ export const ForensicsView: React.FC = () => {
                   <div><span className="text-indigo-400">Message-ID:</span> {currentEmail.metadata?.messageId}</div>
                   <div><span className="text-indigo-400">User-Agent:</span> {currentEmail.metadata?.userAgent}</div>
                   <div><span className="text-indigo-400">X-Originating-IP:</span> [{currentEmail.sender?.originIp}]</div>
-                  <div><span className="text-indigo-400">Authentication-Results:</span> spf={currentEmail.auth?.spf?.status.toLowerCase()} dkim={currentEmail.auth?.dkim?.status.toLowerCase()} dmarc={currentEmail.auth?.dmarc?.status.toLowerCase()}</div>
+                  <div><span className="text-indigo-400">Authentication-Results:</span> spf={currentEmail.auth?.spf?.status?.toLowerCase() || 'none'} dkim={currentEmail.auth?.dkim?.status?.toLowerCase() || 'none'} dmarc={currentEmail.auth?.dmarc?.status?.toLowerCase() || 'none'}</div>
                 </div>
               )}
 

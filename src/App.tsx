@@ -6,6 +6,8 @@ import { ThreatIntelligenceView } from './components/ThreatIntelligenceView';
 import { LiveEmailInterceptor } from './components/LiveEmailInterceptor';
 import { AuthProvider } from './context/AuthContext';
 
+import { ErrorBoundary } from './components/ErrorBoundary';
+
 export const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
 
@@ -25,26 +27,27 @@ export const AppContent: React.FC = () => {
       {/* Global Automated Live Ingestion & Threat Interceptor */}
       <LiveEmailInterceptor onSelectEmailForForensics={handleSelectEmailForForensics} />
 
-      {/* Main Dynamic View Area */}
+      {/* Main Dynamic View Area wrapped in fault-tolerant ErrorBoundary */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        
-        {/* VIEW 1: Dashboard (3D Global Map) */}
-        {activeTab === 'dashboard' && (
-          <GlobeView 
-            onSelectThreat={(id) => {}}
-            onOpenForensics={() => setActiveTab('forensics')}
-          />
-        )}
+        <ErrorBoundary fallbackTitle="Security Inspection Zone Contained">
+          {/* VIEW 1: Dashboard (3D Global Map) */}
+          {activeTab === 'dashboard' && (
+            <GlobeView 
+              onSelectThreat={(id) => {}}
+              onOpenForensics={() => setActiveTab('forensics')}
+            />
+          )}
 
-        {/* VIEW 2: Forensics Investigation Suite */}
-        {activeTab === 'forensics' && (
-          <ForensicsView />
-        )}
+          {/* VIEW 2: Forensics Investigation Suite */}
+          {activeTab === 'forensics' && (
+            <ForensicsView />
+          )}
 
-        {/* VIEW 3: Threat Intelligence & IOC Database */}
-        {activeTab === 'intel' && (
-          <ThreatIntelligenceView />
-        )}
+          {/* VIEW 3: Threat Intelligence & IOC Database */}
+          {activeTab === 'intel' && (
+            <ThreatIntelligenceView />
+          )}
+        </ErrorBoundary>
       </main>
 
       {/* Footer */}

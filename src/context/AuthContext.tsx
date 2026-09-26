@@ -76,7 +76,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const sid = getOrCreateSessionId();
       const res = await fetch(`/api/auth/status?session_id=${encodeURIComponent(sid)}`, {
-        headers: { 'x-session-id': sid }
+        headers: { 'x-session-id': sid },
+        credentials: 'include'
       });
       if (!res.ok) return;
       const data = await res.json();
@@ -125,7 +126,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await fetch(`/api/auth/disconnect?session_id=${encodeURIComponent(sid)}`, {
         method: 'POST',
-        headers: { 'x-session-id': sid }
+        headers: { 'x-session-id': sid },
+        credentials: 'include'
       });
     } catch (_) {}
     
@@ -133,13 +135,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsAuthenticated(false);
     try {
       localStorage.removeItem(getScopedStorageKey(sid));
+      localStorage.removeItem(`threatlens_custom_emails_db_${sid}`);
       localStorage.removeItem('threatlens_auth_user_profile');
       localStorage.removeItem('threatlens_device_session_id');
-      document.cookie = 'tl_session=; path=/; max-age=0; SameSite=Lax';
-      document.cookie = 'tl_auth_token=; path=/; max-age=0; SameSite=Lax';
+      document.cookie = 'tl_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0; SameSite=Lax';
+      document.cookie = 'tl_auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0; SameSite=Lax';
     } catch (_) {}
     
-    window.location.href = window.location.pathname;
+    window.location.replace('/');
   };
 
   return (

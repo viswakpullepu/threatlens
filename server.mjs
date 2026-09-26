@@ -21,6 +21,8 @@ const OAUTH_CONFIG_PATH = path.resolve('./src/data/oauth_config.json');
 
 // Multi-tenant in-memory session map: sessionId -> { tokens, user, emails: [] }
 const activeSessions = new Map();
+// In-memory revocation registry to immediately terminate disconnected sessions
+const revokedSessions = new Set();
 
 // Read config from disk or environment
 let oauthConfig = {};
@@ -159,19 +161,41 @@ export function filterOutAlertSpam(emails) {
 export async function getSessionState(sessionId, req = null) {
   const sid = (sessionId && sessionId !== 'default_client_session') ? sessionId : extractSessionId(req, null);
   
+  // Baseline demo emails for unauthenticated sessions
+  let demoEmails = [];
+  if (fs.existsSync(DB_PATH)) {
+    try {
+      demoEmails = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
+    } catch (_) {}
+  }
+
+  // If this session has been revoked/disconnected, deny immediately
+  if (revokedSessions.has(sid)) {
+    return { tokens: null, user: null, emails: filterOutAlertSpam(demoEmails) };
+  }
+
   // 1. Check in-memory session map for this specific session ID
   if (activeSessions.has(sid)) {
     const mem = activeSessions.get(sid);
     if (mem && mem.tokens && mem.tokens.access_token) {
-      mem.emails = filterOutAlertSpam(mem.emails);
-      return mem;
+      if (mem.user?.email && revokedSessions.has(mem.user.email.toLowerCase())) {
+        activeSessions.delete(sid);
+      } else {
+        mem.emails = filterOutAlertSpam(mem.emails);
+        return mem;
+      }
     }
   }
 
   // 2. Check encrypted auth cookie from request headers (client browser specific)
   if (req?.headers?.cookie) {
     const authData = parseAuthCookie(req.headers.cookie);
-    if (authData && authData.tokens && authData.tokens.access_token) {
+    const isRevoked = authData && (
+      (authData.sessionId && revokedSessions.has(authData.sessionId)) ||
+      (authData.user?.email && revokedSessions.has(authData.user.email.toLowerCase()))
+    );
+
+    if (authData && !isRevoked && authData.tokens && authData.tokens.access_token) {
       const existing = activeSessions.get(sid) || {};
       const cookieSession = {
         tokens: authData.tokens,
@@ -193,7 +217,7 @@ export async function getSessionState(sessionId, req = null) {
         getOAuthFromDb(sid),
         new Promise((_, reject) => setTimeout(() => reject(new Error('DB Timeout')), 1500))
       ]);
-      if (dbOAuth?.tokens) {
+      if (dbOAuth?.tokens && (!dbOAuth.user?.email || !revokedSessions.has(dbOAuth.user.email.toLowerCase()))) {
         const userEmail = dbOAuth.user?.email || null;
         const dbEmails = await getEmailsFromDb(userEmail, sid, 100) || [];
         const loaded = {
@@ -214,7 +238,7 @@ export async function getSessionState(sessionId, req = null) {
   if (fs.existsSync(sessionFilePath)) {
     try {
       const sData = JSON.parse(fs.readFileSync(sessionFilePath, 'utf8'));
-      if (sData && sData.tokens) {
+      if (sData && sData.tokens && (!sData.user?.email || !revokedSessions.has(sData.user.email.toLowerCase()))) {
         const loaded = {
           tokens: sData.tokens || null,
           user: sData.user || null,
@@ -223,14 +247,6 @@ export async function getSessionState(sessionId, req = null) {
         activeSessions.set(sid, loaded);
         return loaded;
       }
-    } catch (_) {}
-  }
-
-  // Baseline demo emails for unauthenticated sessions
-  let demoEmails = [];
-  if (fs.existsSync(DB_PATH)) {
-    try {
-      demoEmails = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
     } catch (_) {}
   }
 
@@ -1309,6 +1325,7 @@ export async function analyzeEmail(rawInput, sourceName = 'inbox_stream.eml', se
       identity: { score: vIdent, max: 25, details: identDetails },
       urls: { score: vUrl, max: 25, details: urlDetails },
       attachments: { score: vAttach, max: 25, details: attachDetails },
+      nlp: { score: vNlp, max: 20, details: nlpDetails },
       semantics: { score: vNlp, max: 20, details: nlpDetails },
       synergy: { score: synergyScore, details: synergyDetails },
       trustCredits: { score: trustCredits, details: trustDetails },
@@ -1479,6 +1496,7 @@ export async function handleRequest(req, res) {
   // GOOGLE OAUTH & GMAIL LIVE INGESTION ROUTES
   // ==========================================
   if (req.method === 'GET' && pathname === '/api/auth/google/login') {
+    if (sessionId) revokedSessions.delete(sessionId);
     const authUrl = getGoogleAuthUrl(req, sessionId);
     res.writeHead(302, { Location: authUrl });
     res.end();
@@ -1501,6 +1519,8 @@ export async function handleRequest(req, res) {
       const tokens = await exchangeGoogleCodeForTokens(code, req);
       if (tokens.access_token) {
         const userProfile = await fetchGoogleUserProfile(tokens.access_token);
+        if (stateSessionId) revokedSessions.delete(stateSessionId);
+        if (userProfile?.email) revokedSessions.delete(userProfile.email.toLowerCase());
         await saveSessionState(stateSessionId, tokens, userProfile);
 
         // Immediately auto-sync recent inbound messages for this user (gentle baseline: 5 messages, no bulk deluge)
@@ -1586,10 +1606,27 @@ export async function handleRequest(req, res) {
   if (req.method === 'POST' && pathname === '/api/auth/disconnect') {
     const session = activeSessions.get(sessionId);
     const userEmail = session?.user?.email;
+
+    if (sessionId) revokedSessions.add(sessionId);
     activeSessions.delete(sessionId);
+
     if (userEmail) {
+      revokedSessions.add(userEmail.toLowerCase());
       activeSessions.delete(userEmail.toLowerCase());
     }
+
+    if (req?.headers?.cookie) {
+      const authData = parseAuthCookie(req.headers.cookie);
+      if (authData?.sessionId) {
+        revokedSessions.add(authData.sessionId);
+        activeSessions.delete(authData.sessionId);
+      }
+      if (authData?.user?.email) {
+        revokedSessions.add(authData.user.email.toLowerCase());
+        activeSessions.delete(authData.user.email.toLowerCase());
+      }
+    }
+
     if (isPostgresConfigured() && sessionId) {
       try {
         await clearOAuthFromDb(sessionId);
@@ -1603,8 +1640,8 @@ export async function handleRequest(req, res) {
     }
 
     res.setHeader('Set-Cookie', [
-      'tl_session=; Path=/; Max-Age=0; SameSite=Lax',
-      'tl_auth_token=; Path=/; Max-Age=0; SameSite=Lax; HttpOnly'
+      'tl_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; SameSite=Lax',
+      'tl_auth_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; SameSite=Lax; HttpOnly'
     ]);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ success: true, message: 'Disconnected successfully' }));
