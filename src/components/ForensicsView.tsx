@@ -991,7 +991,7 @@ export const ForensicsView: React.FC = () => {
 
                   {nlpData.topFeatures.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                      {nlpData.topFeatures.map((f, i) => {
+                      {nlpData.topFeatures.map((f: any, i: number) => {
                         const isThreatCategory = f.category !== 'benign';
                         const badgeStyle = isThreatCategory 
                           ? 'bg-red-50 text-red-700 border-red-200' 
