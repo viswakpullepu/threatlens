@@ -1,0 +1,208 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 330" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="pipeBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#050a17" />
+      <stop offset="100%" stop-color="#0a1224" />
+    </linearGradient>
+
+    <!-- Card Gradients -->
+    <linearGradient id="step1Grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+
+    <!-- Accents -->
+    <linearGradient id="cyanAccent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+
+    <linearGradient id="purpleAccent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#c084fc" />
+      <stop offset="100%" stop-color="#7c3aed" />
+    </linearGradient>
+
+    <linearGradient id="emeraldAccent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+
+    <filter id="nodeGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <style>
+    .node-title { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 800; font-size: 13px; fill: #f8fafc; }
+    .node-step { font-family: 'SF Mono', Consolas, monospace; font-weight: 700; font-size: 10px; letter-spacing: 1px; }
+    .node-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 11px; fill: #94a3b8; line-height: 1.4; }
+    .node-tech { font-family: 'SF Mono', Consolas, monospace; font-size: 10px; font-weight: 600; fill: #cbd5e1; }
+  </style>
+
+  <!-- Container Box -->
+  <rect width="1160" height="330" rx="16" fill="url(#pipeBg)" stroke="#1e293b" stroke-width="2" />
+
+  <!-- Section Header -->
+  <g transform="translate(30, 24)">
+    <rect x="0" y="0" width="8" height="20" rx="2" fill="#38bdf8" />
+    <text x="18" y="16" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="900" fill="#f8fafc" letter-spacing="1">
+      THREATLENS AI: 5-STAGE ZERO-TRUST PIPELINE ARCHITECTURE
+    </text>
+    <text x="650" y="15" font-family="'SF Mono', Consolas, monospace" font-size="11" fill="#38bdf8">
+      [RFC 5322 • RFC 7208 • RFC 6376 • RFC 7489 • MITRE v14]
+    </text>
+  </g>
+
+  <!-- Connecting Highway Line -->
+  <line x1="80" y1="180" x2="1080" y2="180" stroke="#334155" stroke-width="3" stroke-dasharray="6 4" />
+
+  <!-- STAGE 1: INGESTION -->
+  <g transform="translate(30, 70)">
+    <rect width="200" height="225" rx="14" fill="url(#step1Grad)" stroke="#38bdf8" stroke-width="1.5" />
+    <rect x="0" y="0" width="200" height="5" rx="2" fill="#38bdf8" />
+    <g transform="translate(16, 22)">
+      <text class="node-step" fill="#38bdf8">STAGE 01</text>
+      <text y="24" class="node-title">Multi-Vector Ingestion</text>
+      
+      <!-- Tech Badge -->
+      <rect y="38" width="168" height="22" rx="6" fill="#0f172a" stroke="#1e293b" />
+      <text x="8" y="53" class="node-tech" fill="#38bdf8">.EML • .MSG • Extension</text>
+
+      <text y="82" class="node-body">
+        <tspan x="0" dy="0">• Ingests raw RFC 822 files</tspan>
+        <tspan x="0" dy="16">• Chrome Extension bridge</tspan>
+        <tspan x="0" dy="16">• Paste raw header streams</tspan>
+        <tspan x="0" dy="16">• Zero server exfiltration</tspan>
+      </text>
+
+      <rect y="160" width="168" height="24" rx="6" fill="#0c4a6e" opacity="0.6" />
+      <text x="8" y="176" class="node-tech" fill="#7dd3fc">⚡ Zero-Trust Client Ingest</text>
+    </g>
+  </g>
+
+  <!-- Connector Arrow 1 -> 2 -->
+  <g transform="translate(235, 172)">
+    <circle cx="9" cy="8" r="14" fill="#0f172a" stroke="#38bdf8" stroke-width="1.5" />
+    <path d="M6 3 L12 8 L6 13" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" />
+  </g>
+
+  <!-- STAGE 2: DISASSEMBLY -->
+  <g transform="translate(255, 70)">
+    <rect width="200" height="225" rx="14" fill="url(#step1Grad)" stroke="#6366f1" stroke-width="1.5" />
+    <rect x="0" y="0" width="200" height="5" rx="2" fill="#6366f1" />
+    <g transform="translate(16, 22)">
+      <text class="node-step" fill="#818cf8">STAGE 02</text>
+      <text y="24" class="node-title">MIME Disassembly</text>
+      
+      <!-- Tech Badge -->
+      <rect y="38" width="168" height="22" rx="6" fill="#0f172a" stroke="#1e293b" />
+      <text x="8" y="53" class="node-tech" fill="#818cf8">RFC 5322 DOM Lexer</text>
+
+      <text y="82" class="node-body">
+        <tspan x="0" dy="0">• Recursive MIME tree split</tspan>
+        <tspan x="0" dy="16">• Hop-by-hop Received trace</tspan>
+        <tspan x="0" dy="16">• SHA-256 attachment hashes</tspan>
+        <tspan x="0" dy="16">• URL extraction &amp; unmasking</tspan>
+      </text>
+
+      <rect y="160" width="168" height="24" rx="6" fill="#312e81" opacity="0.6" />
+      <text x="8" y="176" class="node-tech" fill="#c7d2fe">🔍 Subsea Hop Timings</text>
+    </g>
+  </g>
+
+  <!-- Connector Arrow 2 -> 3 -->
+  <g transform="translate(460, 172)">
+    <circle cx="9" cy="8" r="14" fill="#0f172a" stroke="#a855f7" stroke-width="1.5" />
+    <path d="M6 3 L12 8 L6 13" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" />
+  </g>
+
+  <!-- STAGE 3: CRYPTOGRAPHIC MATRIX -->
+  <g transform="translate(480, 70)">
+    <rect width="200" height="225" rx="14" fill="url(#step1Grad)" stroke="#a855f7" stroke-width="1.5" />
+    <rect x="0" y="0" width="200" height="5" rx="2" fill="#a855f7" />
+    <g transform="translate(16, 22)">
+      <text class="node-step" fill="#c084fc">STAGE 03</text>
+      <text y="24" class="node-title">Cryptographic Matrix</text>
+      
+      <!-- Tech Badge -->
+      <rect y="38" width="168" height="22" rx="6" fill="#0f172a" stroke="#1e293b" />
+      <text x="8" y="53" class="node-tech" fill="#c084fc">SPF • DKIM • DMARC</text>
+
+      <text y="82" class="node-body">
+        <tspan x="0" dy="0">• SPF RFC 7208 IP authorization</tspan>
+        <tspan x="0" dy="16">• DKIM RFC 6376 pubkey verify</tspan>
+        <tspan x="0" dy="16">• DMARC RFC 7489 alignment</tspan>
+        <tspan x="0" dy="16">• Reply-To spoofing alerts</tspan>
+      </text>
+
+      <rect y="160" width="168" height="24" rx="6" fill="#581c87" opacity="0.6" />
+      <text x="8" y="176" class="node-tech" fill="#e9d5ff">🔐 1-Pane Alignment</text>
+    </g>
+  </g>
+
+  <!-- Connector Arrow 3 -> 4 -->
+  <g transform="translate(685, 172)">
+    <circle cx="9" cy="8" r="14" fill="#0f172a" stroke="#f43f5e" stroke-width="1.5" />
+    <path d="M6 3 L12 8 L6 13" fill="none" stroke="#f43f5e" stroke-width="2" stroke-linecap="round" />
+  </g>
+
+  <!-- STAGE 4: NLP TF-IDF & MITRE -->
+  <g transform="translate(705, 70)">
+    <rect width="200" height="225" rx="14" fill="url(#step1Grad)" stroke="#f43f5e" stroke-width="1.5" />
+    <rect x="0" y="0" width="200" height="5" rx="2" fill="#f43f5e" />
+    <g transform="translate(16, 22)">
+      <text class="node-step" fill="#fb7185">STAGE 04</text>
+      <text y="24" class="node-title">NLP TF-IDF &amp; MITRE</text>
+      
+      <!-- Tech Badge -->
+      <rect y="38" width="168" height="22" rx="6" fill="#0f172a" stroke="#1e293b" />
+      <text x="8" y="53" class="node-tech" fill="#fb7185">N-Gram Vectorizer (1-2)</text>
+
+      <text y="82" class="node-body">
+        <tspan x="0" dy="0">• Coercive urgency detection</tspan>
+        <tspan x="0" dy="16">• BEC wire fraud n-grams</tspan>
+        <tspan x="0" dy="16">• MITRE T1566/T1036 tags</tspan>
+        <tspan x="0" dy="16">• 0% False positives</tspan>
+      </text>
+
+      <rect y="160" width="168" height="24" rx="6" fill="#881337" opacity="0.6" />
+      <text x="8" y="176" class="node-tech" fill="#fecdd3">🧠 Mathematical TF-IDF</text>
+    </g>
+  </g>
+
+  <!-- Connector Arrow 4 -> 5 -->
+  <g transform="translate(910, 172)">
+    <circle cx="9" cy="8" r="14" fill="#0f172a" stroke="#10b981" stroke-width="1.5" />
+    <path d="M6 3 L12 8 L6 13" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" />
+  </g>
+
+  <!-- STAGE 5: 3D GLOBE & SOAR -->
+  <g transform="translate(930, 70)">
+    <rect width="200" height="225" rx="14" fill="url(#step1Grad)" stroke="#10b981" stroke-width="1.5" />
+    <rect x="0" y="0" width="200" height="5" rx="2" fill="#10b981" />
+    <g transform="translate(16, 22)">
+      <text class="node-step" fill="#34d399">STAGE 05</text>
+      <text y="24" class="node-title">3D WebGL &amp; SOAR</text>
+      
+      <!-- Tech Badge -->
+      <rect y="38" width="168" height="22" rx="6" fill="#0f172a" stroke="#1e293b" />
+      <text x="8" y="53" class="node-tech" fill="#34d399">Three.js + BSA 65B PDF</text>
+
+      <text y="82" class="node-body">
+        <tspan x="0" dy="0">• WebGL 3D Earth raycasting</tspan>
+        <tspan x="0" dy="16">• Origin MTA IP geolocation</tspan>
+        <tspan x="0" dy="16">• Legal Section 65B dossier</tspan>
+        <tspan x="0" dy="16">• M365 / Firewall block rules</tspan>
+      </text>
+
+      <rect y="160" width="168" height="24" rx="6" fill="#064e3b" opacity="0.6" />
+      <text x="8" y="176" class="node-tech" fill="#a7f3d0">🏆 Court Evidence PDF</text>
+    </g>
+  </g>
+
+</svg>

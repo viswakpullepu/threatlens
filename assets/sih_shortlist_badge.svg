@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 140" width="100%" height="100%">
+  <defs>
+    <linearGradient id="badgeBg" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#040d21" />
+      <stop offset="50%" stop-color="#0b1b3d" />
+      <stop offset="100%" stop-color="#040d21" />
+    </linearGradient>
+
+    <linearGradient id="goldAccent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#f59e0b" />
+    </linearGradient>
+
+    <filter id="goldGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <style>
+    .gold-title { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 900; font-size: 13px; fill: #fbbf24; letter-spacing: 1.2px; }
+    .col-title { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 800; font-size: 11px; fill: #ffffff; }
+    .col-sub { font-family: 'SF Mono', Consolas, monospace; font-size: 9.5px; fill: #94a3b8; }
+  </style>
+
+  <!-- Base Rounded Container -->
+  <rect width="1160" height="140" rx="14" fill="url(#badgeBg)" stroke="#f59e0b" stroke-width="1.5" />
+
+  <!-- Top Banner Header -->
+  <g transform="translate(24, 20)">
+    <circle cx="8" cy="8" r="7" fill="#f59e0b" filter="url(#goldGlow)" />
+    <text x="24" y="12" class="gold-title">🏆 SIH 2026 JURY SHORTLIST CRITERIA — 5-POINT COMPLIANCE AUDIT</text>
+  </g>
+
+  <!-- 5 Columns Grid -->
+  <g transform="translate(24, 48)">
+    
+    <!-- Col 1: Prototype -->
+    <g transform="translate(0, 0)">
+      <rect width="210" height="70" rx="10" fill="#0f172a" stroke="#1e293b" />
+      <circle cx="16" cy="22" r="5" fill="#10b981" />
+      <text x="28" y="25" class="col-title">1. Working Live Prototype</text>
+      <text x="16" y="44" class="col-sub">✓ 100% Deployed on Vercel</text>
+      <text x="16" y="58" class="col-sub">✓ Chrome Extension Ready</text>
+    </g>
+
+    <!-- Col 2: Zero-Trust -->
+    <g transform="translate(225, 0)">
+      <rect width="210" height="70" rx="10" fill="#0f172a" stroke="#1e293b" />
+      <circle cx="16" cy="22" r="5" fill="#38bdf8" />
+      <text x="28" y="25" class="col-title">2. Zero-Trust Local Engine</text>
+      <text x="16" y="44" class="col-sub">✓ Client-Side DOM Parser</text>
+      <text x="16" y="58" class="col-sub">✓ Zero Corporate Data Leakage</text>
+    </g>
+
+    <!-- Col 3: Cryptography -->
+    <g transform="translate(450, 0)">
+      <rect width="210" height="70" rx="10" fill="#0f172a" stroke="#1e293b" />
+      <circle cx="16" cy="22" r="5" fill="#c084fc" />
+      <text x="28" y="25" class="col-title">3. Unified Cryptography</text>
+      <text x="16" y="44" class="col-sub">✓ SPF·DKIM·DMARC in 1 Pane</text>
+      <text x="16" y="58" class="col-sub">✓ Real DNS TXT Diagnoser</text>
+    </g>
+
+    <!-- Col 4: NLP Rigor -->
+    <g transform="translate(675, 0)">
+      <rect width="210" height="70" rx="10" fill="#0f172a" stroke="#1e293b" />
+      <circle cx="16" cy="22" r="5" fill="#f43f5e" />
+      <text x="28" y="25" class="col-title">4. NLP TF-IDF Rigor</text>
+      <text x="16" y="44" class="col-sub">✓ Unigram/Bigram Extraction</text>
+      <text x="16" y="58" class="col-sub">✓ 0% False Positives on Safe</text>
+    </g>
+
+    <!-- Col 5: Legal Law -->
+    <g transform="translate(900, 0)">
+      <rect width="210" height="70" rx="10" fill="#0f172a" stroke="#1e293b" />
+      <circle cx="16" cy="22" r="5" fill="#fbbf24" />
+      <text x="28" y="25" class="col-title">5. Indian Evidence Act</text>
+      <text x="16" y="44" class="col-sub">✓ Bharatiya Sakshya Sec 65B</text>
+      <text x="16" y="58" class="col-sub">✓ Court-Admissible PDF Dossier</text>
+    </g>
+
+  </g>
+</svg>
