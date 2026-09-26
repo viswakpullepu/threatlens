@@ -88,7 +88,7 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
   // Custom emails from database & localStorage
   const [customEmails, setCustomEmails] = useState<any[]>(() => {
     try {
-      const cached = localStorage.getItem(`threatlens_custom_emails_db_${sessionId}`) || localStorage.getItem('threatlens_custom_emails_db');
+      const cached = localStorage.getItem(`threatlens_custom_emails_db_${sessionId}`);
       return cached ? JSON.parse(cached) : [];
     } catch (_) {
       return [];

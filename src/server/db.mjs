@@ -247,7 +247,10 @@ export async function getEmailsFromDb(ownerEmail = null, sessionId = null, limit
 /**
  * Saves or updates OAuth tokens and user profile keyed by sessionId and userEmail.
  */
-export async function saveOAuthToDb(tokens, userProfile, sessionId = 'primary_user') {
+export async function saveOAuthToDb(tokens, userProfile, sessionId) {
+  if (!sessionId || sessionId === 'default_client_session' || sessionId === 'primary_user') {
+    return false;
+  }
   const p = getPool();
   if (!p) return false;
 
@@ -277,9 +280,12 @@ export async function saveOAuthToDb(tokens, userProfile, sessionId = 'primary_us
 }
 
 /**
- * Retrieves OAuth session state strictly by sessionId (or userEmail fallback).
+ * Retrieves OAuth session state strictly for a specific sessionId.
  */
-export async function getOAuthFromDb(sessionId = 'primary_user') {
+export async function getOAuthFromDb(sessionId) {
+  if (!sessionId || sessionId === 'default_client_session' || sessionId === 'primary_user') {
+    return null;
+  }
   const p = getPool();
   if (!p) return null;
 
@@ -288,7 +294,7 @@ export async function getOAuthFromDb(sessionId = 'primary_user') {
     const result = await p.query(`
       SELECT tokens, user_profile, updated_at 
       FROM oauth_sessions 
-      WHERE id = $1 OR user_email = $1
+      WHERE id = $1
       ORDER BY updated_at DESC
       LIMIT 1
     `, [sessionId]);
@@ -309,13 +315,16 @@ export async function getOAuthFromDb(sessionId = 'primary_user') {
 /**
  * Clears OAuth session state strictly for sessionId.
  */
-export async function clearOAuthFromDb(sessionId = 'primary_user') {
+export async function clearOAuthFromDb(sessionId) {
+  if (!sessionId || sessionId === 'default_client_session' || sessionId === 'primary_user') {
+    return false;
+  }
   const p = getPool();
   if (!p) return false;
 
   try {
     await initDb();
-    await p.query('DELETE FROM oauth_sessions WHERE id = $1 OR user_email = $1', [sessionId]);
+    await p.query('DELETE FROM oauth_sessions WHERE id = $1', [sessionId]);
     return true;
   } catch (err) {
     console.error('[PostgreSQL clearOAuth Error]:', err.message);

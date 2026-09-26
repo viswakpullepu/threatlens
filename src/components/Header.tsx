@@ -33,18 +33,8 @@ export const Header: React.FC<HeaderProps> = ({
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
-  const activeUser = React.useMemo(() => {
-    if (user) return user;
-    if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem('threatlens_auth_user_profile');
-        if (raw) return JSON.parse(raw);
-      } catch (_) {}
-    }
-    return null;
-  }, [user]);
-
-  const isUserLoggedIn = Boolean(activeUser || isAuthenticated);
+  const isUserLoggedIn = Boolean(isAuthenticated && user);
+  const activeUser = isUserLoggedIn ? user : null;
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {

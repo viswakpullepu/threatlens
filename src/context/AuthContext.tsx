@@ -24,44 +24,53 @@ export interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const USER_STORAGE_KEY = 'threatlens_auth_user_profile';
+const getScopedStorageKey = (sid: string) => `threatlens_auth_user_${sid}`;
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const sessionId = typeof window !== 'undefined' ? getOrCreateSessionId() : 'ssr_client_session';
+
   const [user, setUser] = useState<UserProfile | null>(() => {
     try {
       if (typeof window !== 'undefined') {
+        const sid = getOrCreateSessionId();
         const params = new URLSearchParams(window.location.search);
-        if (params.get('connected') === 'gmail' && params.get('user')) {
+        const urlSid = params.get('session_id') || params.get('sessionId');
+        if (params.get('connected') === 'gmail' && params.get('user') && (!urlSid || urlSid === sid)) {
           const email = params.get('user')!;
           const initUser: UserProfile = {
             email,
             name: email.split('@')[0],
             verified_email: true
           };
-          localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(initUser));
+          localStorage.setItem(getScopedStorageKey(sid), JSON.stringify(initUser));
           return initUser;
         }
+        const cached = localStorage.getItem(getScopedStorageKey(sid));
+        return cached ? JSON.parse(cached) : null;
       }
-      const cached = localStorage.getItem(USER_STORAGE_KEY);
-      return cached ? JSON.parse(cached) : null;
+      return null;
     } catch (_) {
       return null;
     }
   });
+
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     try {
       if (typeof window !== 'undefined') {
+        const sid = getOrCreateSessionId();
         const params = new URLSearchParams(window.location.search);
-        if (params.get('connected') === 'gmail') return true;
+        const urlSid = params.get('session_id') || params.get('sessionId');
+        if (params.get('connected') === 'gmail' && (!urlSid || urlSid === sid)) return true;
+        return !!localStorage.getItem(getScopedStorageKey(sid));
       }
-      return !!localStorage.getItem(USER_STORAGE_KEY);
+      return false;
     } catch (_) {
       return false;
     }
   });
+
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [provider, setProvider] = useState<string | null>('gmail');
-  const sessionId = getOrCreateSessionId();
 
   const refreshAuth = async () => {
     try {
@@ -77,24 +86,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsAuthenticated(true);
         setProvider(data.provider || 'gmail');
         try {
-          localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(data.user));
+          localStorage.setItem(getScopedStorageKey(sid), JSON.stringify(data.user));
+          // Clean legacy unscoped key
+          localStorage.removeItem('threatlens_auth_user_profile');
         } catch (_) {}
       } else {
-        // If backend session expired or in-flight, check persistent client storage
-        const cached = typeof window !== 'undefined' ? localStorage.getItem(USER_STORAGE_KEY) : null;
-        if (cached) {
-          try {
-            const parsed = JSON.parse(cached);
-            setUser(parsed);
-            setIsAuthenticated(true);
-          } catch (_) {
-            setUser(null);
-            setIsAuthenticated(false);
-          }
-        } else {
-          setUser(null);
-          setIsAuthenticated(false);
-        }
+        // Explicitly disconnected: clear all local credentials for this session
+        setUser(null);
+        setIsAuthenticated(false);
+        try {
+          localStorage.removeItem(getScopedStorageKey(sid));
+          localStorage.removeItem('threatlens_auth_user_profile');
+        } catch (_) {}
       }
     } catch (err) {
       console.warn('[AuthContext] Could not refresh auth status:', err);
@@ -118,8 +121,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
+    const sid = getOrCreateSessionId();
     try {
-      const sid = getOrCreateSessionId();
       await fetch(`/api/auth/disconnect?session_id=${encodeURIComponent(sid)}`, {
         method: 'POST',
         headers: { 'x-session-id': sid }
@@ -129,7 +132,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     setIsAuthenticated(false);
     try {
-      localStorage.removeItem(USER_STORAGE_KEY);
+      localStorage.removeItem(getScopedStorageKey(sid));
+      localStorage.removeItem('threatlens_auth_user_profile');
       localStorage.removeItem('threatlens_device_session_id');
       document.cookie = 'tl_session=; path=/; max-age=0; SameSite=Lax';
       document.cookie = 'tl_auth_token=; path=/; max-age=0; SameSite=Lax';

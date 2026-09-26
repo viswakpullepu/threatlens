@@ -16,7 +16,7 @@ import {
 const PORT = process.env.PORT || 3001;
 const isVercel = !!process.env.VERCEL;
 const DB_PATH = isVercel ? '/tmp/emails_db.json' : path.resolve('./src/data/emails_db.json');
-const OAUTH_PATH = isVercel ? '/tmp/oauth_tokens.json' : path.resolve('./src/data/oauth_tokens.json');
+const SESSIONS_DIR = isVercel ? '/tmp/sessions' : path.resolve('./src/data/sessions');
 const OAUTH_CONFIG_PATH = path.resolve('./src/data/oauth_config.json');
 
 // Multi-tenant in-memory session map: sessionId -> { tokens, user, emails: [] }
@@ -104,28 +104,39 @@ export function parseAuthCookie(cookieHeader) {
 
 /**
  * Extract distinct session ID from incoming HTTP request.
+ * Every unique device/browser without an active session is issued its own cryptographic session ID.
  */
 export function extractSessionId(req, url) {
   if (req?.headers) {
-    if (req.headers['x-session-id']) return String(req.headers['x-session-id']).trim();
+    if (req.headers['x-session-id']) {
+      const sid = String(req.headers['x-session-id']).trim();
+      if (sid && sid !== 'default_client_session') return sid;
+    }
     if (req.headers['authorization'] && req.headers['authorization'].startsWith('Bearer ')) {
       const bToken = req.headers['authorization'].slice(7).trim();
-      if (bToken && bToken.length > 3) return bToken;
+      if (bToken && bToken.length > 3 && bToken !== 'default_client_session') return bToken;
     }
     if (req.headers['cookie']) {
       const authCookieData = parseAuthCookie(req.headers['cookie']);
-      if (authCookieData && authCookieData.sessionId) {
+      if (authCookieData && authCookieData.sessionId && authCookieData.sessionId !== 'default_client_session') {
         return authCookieData.sessionId;
       }
       const cookieMatch = req.headers['cookie'].match(/tl_session=([^;]+)/);
-      if (cookieMatch) return decodeURIComponent(cookieMatch[1]);
+      if (cookieMatch) {
+        const decoded = decodeURIComponent(cookieMatch[1]).trim();
+        if (decoded && decoded !== 'default_client_session') return decoded;
+      }
     }
   }
   if (url) {
     const qSession = url.searchParams.get('session_id') || url.searchParams.get('sessionId') || url.searchParams.get('state');
-    if (qSession) return qSession.trim();
+    if (qSession) {
+      const trimmed = qSession.trim();
+      if (trimmed && trimmed !== 'default_client_session') return trimmed;
+    }
   }
-  return 'default_client_session';
+  // Generate distinct cryptographic session for unauthenticated visitors so no two devices ever cross-contaminate
+  return 'sess_' + crypto.randomUUID();
 }
 
 export function filterOutAlertSpam(emails) {
@@ -142,22 +153,22 @@ export function filterOutAlertSpam(emails) {
 }
 
 /**
- * Retrieve session state (tokens, user profile, emails) scoped to this user.
- * Seamlessly hydrates across page reloads and server restarts.
+ * Retrieve session state (tokens, user profile, emails) strictly scoped to this user/device.
+ * Zero cross-tenant leakage: never falls back to other users' tokens or global files.
  */
 export async function getSessionState(sessionId, req = null) {
-  const sid = sessionId || 'default_client_session';
+  const sid = (sessionId && sessionId !== 'default_client_session') ? sessionId : extractSessionId(req, null);
   
   // 1. Check in-memory session map for this specific session ID
   if (activeSessions.has(sid)) {
     const mem = activeSessions.get(sid);
-    if (mem.tokens && mem.tokens.access_token) {
+    if (mem && mem.tokens && mem.tokens.access_token) {
       mem.emails = filterOutAlertSpam(mem.emails);
       return mem;
     }
   }
 
-  // 2. Check encrypted auth cookie from request headers (critical for Vercel serverless multi-container persistence)
+  // 2. Check encrypted auth cookie from request headers (client browser specific)
   if (req?.headers?.cookie) {
     const authData = parseAuthCookie(req.headers.cookie);
     if (authData && authData.tokens && authData.tokens.access_token) {
@@ -168,7 +179,6 @@ export async function getSessionState(sessionId, req = null) {
         emails: filterOutAlertSpam(existing.emails || [])
       };
       activeSessions.set(sid, cookieSession);
-      activeSessions.set('default_client_session', cookieSession);
       if (authData.sessionId && authData.sessionId !== sid) {
         activeSessions.set(authData.sessionId, cookieSession);
       }
@@ -176,29 +186,13 @@ export async function getSessionState(sessionId, req = null) {
     }
   }
 
-  // 3. Check default in-memory session
-  if (activeSessions.has('default_client_session')) {
-    const defaultMem = activeSessions.get('default_client_session');
-    if (defaultMem.tokens && defaultMem.tokens.access_token) {
-      defaultMem.emails = filterOutAlertSpam(defaultMem.emails);
-      activeSessions.set(sid, defaultMem);
-      return defaultMem;
-    }
-  }
-
-  // 4. Hydrate from PostgreSQL if configured (with 1.5s timeout to prevent hanging on DNS failure)
-  if (isPostgresConfigured()) {
+  // 3. Hydrate strictly from PostgreSQL for THIS specific sessionId
+  if (isPostgresConfigured() && sid && sid !== 'default_client_session') {
     try {
-      let dbOAuth = await Promise.race([
+      const dbOAuth = await Promise.race([
         getOAuthFromDb(sid),
         new Promise((_, reject) => setTimeout(() => reject(new Error('DB Timeout')), 1500))
       ]);
-      if (!dbOAuth?.tokens) {
-        dbOAuth = await Promise.race([
-          getOAuthFromDb('primary_user'),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('DB Timeout')), 1000))
-        ]).catch(() => null);
-      }
       if (dbOAuth?.tokens) {
         const userEmail = dbOAuth.user?.email || null;
         const dbEmails = await getEmailsFromDb(userEmail, sid, 100) || [];
@@ -208,7 +202,6 @@ export async function getSessionState(sessionId, req = null) {
           emails: filterOutAlertSpam(dbEmails)
         };
         activeSessions.set(sid, loaded);
-        activeSessions.set('default_client_session', loaded);
         return loaded;
       }
     } catch (err) {
@@ -216,70 +209,68 @@ export async function getSessionState(sessionId, req = null) {
     }
   }
 
-  // 5. Fallback to local disk credentials (persists across all local browser reloads)
-  let localEmails = [];
-  if (fs.existsSync(DB_PATH)) {
+  // 4. Session-scoped local disk storage (keyed strictly by sessionId, never global)
+  const sessionFilePath = path.join(SESSIONS_DIR, `${encodeURIComponent(sid)}.json`);
+  if (fs.existsSync(sessionFilePath)) {
     try {
-      localEmails = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
-    } catch (_) {}
-  }
-
-  if (fs.existsSync(OAUTH_PATH)) {
-    try {
-      const oData = JSON.parse(fs.readFileSync(OAUTH_PATH, 'utf8'));
-      if (oData && oData.tokens) {
+      const sData = JSON.parse(fs.readFileSync(sessionFilePath, 'utf8'));
+      if (sData && sData.tokens) {
         const loaded = {
-          tokens: oData.tokens || null,
-          user: oData.user || null,
-          emails: filterOutAlertSpam(localEmails)
+          tokens: sData.tokens || null,
+          user: sData.user || null,
+          emails: filterOutAlertSpam(sData.emails || [])
         };
         activeSessions.set(sid, loaded);
-        activeSessions.set('default_client_session', loaded);
         return loaded;
       }
     } catch (_) {}
   }
 
-  const emptySession = { tokens: null, user: null, emails: filterOutAlertSpam(localEmails) };
+  // Baseline demo emails for unauthenticated sessions
+  let demoEmails = [];
+  if (fs.existsSync(DB_PATH)) {
+    try {
+      demoEmails = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
+    } catch (_) {}
+  }
+
+  const emptySession = { tokens: null, user: null, emails: filterOutAlertSpam(demoEmails) };
   activeSessions.set(sid, emptySession);
   return emptySession;
 }
 
 /**
- * Save updated tokens and user profile to session.
+ * Save updated tokens and user profile strictly to this session.
  */
 export async function saveSessionState(sessionId, tokens, user) {
-  const sid = sessionId || 'default_client_session';
+  if (!sessionId || sessionId === 'default_client_session') return;
+  const sid = sessionId;
   const current = activeSessions.get(sid) || { emails: [] };
   current.tokens = tokens;
   if (user) current.user = user;
   
   activeSessions.set(sid, current);
-  activeSessions.set('default_client_session', current);
   if (user?.email) {
     activeSessions.set(user.email.toLowerCase(), current);
   }
 
-  // Persist to PostgreSQL if configured (with timeout guard)
+  // Persist to PostgreSQL strictly for this sessionId
   if (isPostgresConfigured()) {
     Promise.race([
       saveOAuthToDb(tokens, user, sid),
       new Promise((_, reject) => setTimeout(() => reject(new Error('DB Timeout')), 1500))
     ]).catch(() => {});
-    Promise.race([
-      saveOAuthToDb(tokens, user, 'primary_user'),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('DB Timeout')), 1000))
-    ]).catch(() => {});
   }
 
-  // Persist to local disk for permanent restart/reload memory
+  // Persist to session-scoped local disk file
   try {
-    const dir = path.dirname(OAUTH_PATH);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(OAUTH_PATH, JSON.stringify({ 
+    if (!fs.existsSync(SESSIONS_DIR)) fs.mkdirSync(SESSIONS_DIR, { recursive: true });
+    const sessionFilePath = path.join(SESSIONS_DIR, `${encodeURIComponent(sid)}.json`);
+    fs.writeFileSync(sessionFilePath, JSON.stringify({ 
       tokens, 
       user, 
       sessionId: sid, 
+      emails: current.emails || [],
       lastSynced: new Date().toISOString() 
     }, null, 2), 'utf8');
   } catch (_) {}
@@ -290,8 +281,8 @@ export async function saveSessionState(sessionId, tokens, user) {
  * - Live UI Stream / Memory: displays ALL emails (safe + non-safe).
  * - Persistent DB / Threat History: ONLY records non-safe threats (Score >= 50).
  */
-export async function persistEmail(email, sessionId = 'default_client_session', ownerEmail = null) {
-  if (!email) return;
+export async function persistEmail(email, sessionId = null, ownerEmail = null) {
+  if (!email || !sessionId || sessionId === 'default_client_session') return;
   const subj = email?.metadata?.subject || email?.title || email?.subject || '';
   const sender = email?.sender?.displayName || email?.sender?.email || '';
   if (subj.includes('[THREATLENS ALERT]') || sender.includes('ThreatLens')) {
@@ -314,12 +305,17 @@ export async function persistEmail(email, sessionId = 'default_client_session', 
     });
   }
 
-  // Fallback local store (save threats only)
+  // Scoped session storage on disk (never overwrite baseline demo emails in DB_PATH!)
   try {
-    const dir = path.dirname(DB_PATH);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    const threatOnlyList = current.emails.filter(e => (e.threatScore || 0) >= 50);
-    fs.writeFileSync(DB_PATH, JSON.stringify(threatOnlyList, null, 2), 'utf8');
+    if (!fs.existsSync(SESSIONS_DIR)) fs.mkdirSync(SESSIONS_DIR, { recursive: true });
+    const sessionFilePath = path.join(SESSIONS_DIR, `${encodeURIComponent(sessionId)}.json`);
+    fs.writeFileSync(sessionFilePath, JSON.stringify({
+      tokens: current.tokens,
+      user: current.user,
+      sessionId,
+      emails: current.emails,
+      lastSynced: new Date().toISOString()
+    }, null, 2), 'utf8');
   } catch (_) {}
 }
 
@@ -335,7 +331,8 @@ function getDynamicRedirectUri(req) {
   return GOOGLE_REDIRECT_URI;
 }
 
-function getGoogleAuthUrl(req, sessionId = 'default_client_session') {
+function getGoogleAuthUrl(req, sessionId = null) {
+  const sid = (sessionId && sessionId !== 'default_client_session') ? sessionId : ('sess_' + crypto.randomUUID());
   const rootUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
   const redirectUri = getDynamicRedirectUri(req);
   const options = {
@@ -344,7 +341,7 @@ function getGoogleAuthUrl(req, sessionId = 'default_client_session') {
     access_type: 'offline',
     response_type: 'code',
     prompt: 'consent',
-    state: sessionId,
+    state: sid,
     scope: [
       'https://www.googleapis.com/auth/userinfo.email',
       'https://www.googleapis.com/auth/userinfo.profile',
@@ -421,7 +418,12 @@ export async function sendSecurityAlertEmail(accessToken, userEmail, email) {
 /**
  * Fast parallel Gmail sync with continuous pagination across entire mailbox.
  */
-export async function syncGmailInbox(accessToken, sessionId = 'default_client_session', userEmail = null, limit = 50, pageToken = null, depth = 0) {
+export async function syncGmailInbox(accessToken, sessionId = null, userEmail = null, limit = 50, pageToken = null, depth = 0) {
+  if (!sessionId || sessionId === 'default_client_session' || !accessToken) {
+    const empty = [];
+    empty.nextPageToken = null;
+    return empty;
+  }
   try {
     const session = await getSessionState(sessionId);
     const existingEmails = session.emails || [];
@@ -590,7 +592,7 @@ function extractCleanEmail(raw) {
 /**
  * Genuine RFC-822 / HTML / MIME Email Threat Forensic Engine
  */
-export async function analyzeEmail(rawInput, sourceName = 'inbox_stream.eml', sessionId = 'default_client_session', ownerEmail = null) {
+export async function analyzeEmail(rawInput, sourceName = 'inbox_stream.eml', sessionId = null, ownerEmail = null) {
   // 1. Separate RFC-822 header section from body section
   let headerSection = '';
   let bodySection = rawInput;
@@ -1532,7 +1534,12 @@ export async function handleRequest(req, res) {
     const session = await getSessionState(sessionId, req);
     const dbHealth = await getDbHealth();
 
-    res.writeHead(200, { 'Content-Type': 'application/json' });
+    const headers = { 'Content-Type': 'application/json' };
+    if (!req.headers?.cookie?.includes('tl_session=')) {
+      headers['Set-Cookie'] = `tl_session=${encodeURIComponent(sessionId)}; Path=/; Max-Age=2592000; SameSite=Lax`;
+    }
+
+    res.writeHead(200, headers);
     res.end(JSON.stringify({
       connected: !!(session.tokens && session.tokens.access_token),
       provider: session.tokens ? 'gmail' : null,
@@ -1577,16 +1584,21 @@ export async function handleRequest(req, res) {
   }
 
   if (req.method === 'POST' && pathname === '/api/auth/disconnect') {
+    const session = activeSessions.get(sessionId);
+    const userEmail = session?.user?.email;
     activeSessions.delete(sessionId);
-    activeSessions.delete('default_client_session');
-    if (isPostgresConfigured()) {
+    if (userEmail) {
+      activeSessions.delete(userEmail.toLowerCase());
+    }
+    if (isPostgresConfigured() && sessionId) {
       try {
         await clearOAuthFromDb(sessionId);
       } catch (_) {}
     }
-    if (sessionId === 'default_client_session' && fs.existsSync(OAUTH_PATH)) {
+    if (sessionId) {
       try {
-        fs.unlinkSync(OAUTH_PATH);
+        const sessionFilePath = path.join(SESSIONS_DIR, `${encodeURIComponent(sessionId)}.json`);
+        if (fs.existsSync(sessionFilePath)) fs.unlinkSync(sessionFilePath);
       } catch (_) {}
     }
 

@@ -149,7 +149,7 @@ export const ForensicsView: React.FC = () => {
 
   const [customEmails, setCustomEmails] = useState<any[]>(() => {
     try {
-      const cached = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(BASE_STORAGE_KEY);
+      const cached = localStorage.getItem(STORAGE_KEY);
       const parsed = cached ? JSON.parse(cached) : [];
       return Array.isArray(parsed) ? parsed.filter((e: any) => {
         const s = e?.metadata?.subject || e?.title || e?.subject || '';
@@ -165,10 +165,10 @@ export const ForensicsView: React.FC = () => {
   const [rawEmailText, setRawEmailText] = useState('');
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [oauthStatus, setOauthStatus] = useState<{ connected: boolean; user?: any; provider?: string } | null>(() => {
-    return (authUser || isAuthenticated) ? { connected: true, user: authUser, provider: 'gmail' } : null;
+    return (authUser && isAuthenticated) ? { connected: true, user: authUser, provider: 'gmail' } : null;
   });
-  const isGoogleConnected = Boolean(oauthStatus?.connected || isAuthenticated || authUser);
-  const connectedEmail = authUser?.email || oauthStatus?.user?.email || 'Gmail Connected';
+  const isGoogleConnected = Boolean(oauthStatus ? (oauthStatus.connected && (oauthStatus.user || authUser)) : (isAuthenticated && authUser));
+  const connectedEmail = oauthStatus?.user?.email || authUser?.email || '';
   const [isSyncing, setIsSyncing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [nextPageToken, setNextPageToken] = useState<string | null>(null);

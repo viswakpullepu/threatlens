@@ -21,12 +21,12 @@ interface LiveEmailInterceptorProps {
 
 // Helper to get or generate persistent device session ID
 export function getOrCreateSessionId(): string {
-  if (typeof window === 'undefined') return 'default_client_session';
+  if (typeof window === 'undefined') return 'ssr_client_session';
   
   // Check URL query param first
   const params = new URLSearchParams(window.location.search);
   const urlSession = params.get('session_id') || params.get('sessionId');
-  if (urlSession && urlSession.length > 5) {
+  if (urlSession && urlSession.length > 5 && urlSession !== 'default_client_session') {
     try {
       localStorage.setItem('threatlens_device_session_id', urlSession);
       document.cookie = `tl_session=${encodeURIComponent(urlSession)}; path=/; max-age=2592000; SameSite=Lax`;
@@ -38,6 +38,10 @@ export function getOrCreateSessionId(): string {
   let sid = '';
   try {
     sid = localStorage.getItem('threatlens_device_session_id') || '';
+    if (sid === 'default_client_session') {
+      sid = '';
+      localStorage.removeItem('threatlens_device_session_id');
+    }
   } catch (_) {}
 
   if (!sid) {
@@ -67,7 +71,7 @@ export const LiveEmailInterceptor: React.FC<LiveEmailInterceptorProps> = ({
   const isInitialSyncRef = useRef(true);
   const knownIdsRef = useRef<Set<string>>(new Set());
   const notifiedIdsRef = useRef<Set<string>>(new Set());
-  const sessionIdRef = useRef<string>('default_client_session');
+  const sessionIdRef = useRef<string>(typeof window !== 'undefined' ? getOrCreateSessionId() : 'ssr_client_session');
 
   // Initialize session ID and known IDs from scoped localStorage
   useEffect(() => {
@@ -81,7 +85,7 @@ export const LiveEmailInterceptor: React.FC<LiveEmailInterceptorProps> = ({
     }
 
     try {
-      const cached = localStorage.getItem(`threatlens_custom_emails_db_${sessionIdRef.current}`) || localStorage.getItem('threatlens_custom_emails_db');
+      const cached = localStorage.getItem(`threatlens_custom_emails_db_${sessionIdRef.current}`);
       if (cached) {
         const list = JSON.parse(cached);
         if (Array.isArray(list)) {
@@ -137,7 +141,6 @@ export const LiveEmailInterceptor: React.FC<LiveEmailInterceptorProps> = ({
                 });
                 try {
                   localStorage.setItem(`threatlens_custom_emails_db_${sid}`, JSON.stringify(allEmails));
-                  localStorage.setItem('threatlens_custom_emails_db', JSON.stringify(allEmails));
                 } catch (_) {}
                 window.dispatchEvent(new CustomEvent('threatlens_emails_updated', {
                   detail: { emails: allEmails, newEmails: [], sessionId: sid }
@@ -158,7 +161,6 @@ export const LiveEmailInterceptor: React.FC<LiveEmailInterceptorProps> = ({
                 // Save updated list to session-scoped localStorage
                 try {
                   localStorage.setItem(`threatlens_custom_emails_db_${sid}`, JSON.stringify(allEmails));
-                  localStorage.setItem('threatlens_custom_emails_db', JSON.stringify(allEmails));
                 } catch (_) {}
 
                 // Broadcast live update event to all views
