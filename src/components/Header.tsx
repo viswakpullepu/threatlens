@@ -101,28 +101,28 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center gap-3 shrink-0">
             {isLoading ? (
               <div className="w-24 h-9 bg-slate-100 animate-pulse rounded-xl" />
-            ) : user ? (
+            ) : (user || isAuthenticated) ? (
               /* Authenticated User Profile Dropdown */
               <div className="relative" ref={profileRef}>
                 <button
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
                   className="flex items-center gap-2.5 p-1.5 pr-3 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 transition-all cursor-pointer shadow-2xs group"
                 >
-                  {user.picture ? (
+                  {user?.picture ? (
                     <img 
                       src={user.picture} 
-                      alt={user.name || user.email} 
+                      alt={user.name || user.email || 'User'} 
                       className="w-7 h-7 rounded-lg object-cover ring-1 ring-slate-300"
                     />
                   ) : (
                     <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white font-black text-xs flex items-center justify-center shadow-xs">
-                      {(user.name || user.email || 'U')[0].toUpperCase()}
+                      {(user?.name || user?.email || 'G')[0].toUpperCase()}
                     </div>
                   )}
 
                   <div className="text-left hidden md:block">
                     <div className="text-xs font-bold text-slate-900 leading-tight truncate max-w-[130px]">
-                      {user.name || user.email.split('@')[0]}
+                      {user?.name || (user?.email ? user.email.split('@')[0] : 'Gmail User')}
                     </div>
                     <div className="text-[10px] text-emerald-600 font-mono font-semibold flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
@@ -138,16 +138,16 @@ export const Header: React.FC<HeaderProps> = ({
                   <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
                     <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 mb-2">
                       <div className="flex items-center gap-2.5 mb-1.5">
-                        {user.picture ? (
+                        {user?.picture ? (
                           <img src={user.picture} alt="" className="w-9 h-9 rounded-xl object-cover ring-1 ring-slate-200" />
                         ) : (
                           <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white font-bold text-sm flex items-center justify-center">
-                            {(user.name || user.email || 'U')[0].toUpperCase()}
+                            {(user?.name || user?.email || 'G')[0].toUpperCase()}
                           </div>
                         )}
                         <div className="overflow-hidden">
-                          <div className="text-xs font-bold text-slate-900 truncate">{user.name || 'ThreatLens User'}</div>
-                          <div className="text-[11px] text-slate-500 font-mono truncate">{user.email}</div>
+                          <div className="text-xs font-bold text-slate-900 truncate">{user?.name || 'Google Workspace Account'}</div>
+                          <div className="text-[11px] text-slate-500 font-mono truncate">{user?.email || 'Connected via OAuth'}</div>
                         </div>
                       </div>
 

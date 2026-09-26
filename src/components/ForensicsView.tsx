@@ -64,8 +64,10 @@ export const ForensicsView: React.FC = () => {
   const [rawEmailText, setRawEmailText] = useState('');
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [oauthStatus, setOauthStatus] = useState<{ connected: boolean; user?: any; provider?: string } | null>(() => {
-    return authUser ? { connected: true, user: authUser, provider: 'gmail' } : null;
+    return (authUser || isAuthenticated) ? { connected: true, user: authUser, provider: 'gmail' } : null;
   });
+  const isGoogleConnected = Boolean(oauthStatus?.connected || isAuthenticated || authUser);
+  const connectedEmail = authUser?.email || oauthStatus?.user?.email || 'Gmail Connected';
   const [isSyncing, setIsSyncing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [nextPageToken, setNextPageToken] = useState<string | null>(null);
@@ -155,7 +157,7 @@ export const ForensicsView: React.FC = () => {
     setIsSyncing(true);
     try {
       const sid = getOrCreateSessionId();
-      const res = await fetch(`/api/auth/google/sync?session_id=${encodeURIComponent(sid)}&limit=50`, { 
+      const res = await fetch(`/api/auth/google/sync?session_id=${encodeURIComponent(sid)}&limit=10`, { 
         method: 'POST',
         headers: { 'x-session-id': sid }
       });
@@ -179,7 +181,7 @@ export const ForensicsView: React.FC = () => {
     setIsLoadingMore(true);
     try {
       const sid = getOrCreateSessionId();
-      let url = `/api/auth/google/sync?session_id=${encodeURIComponent(sid)}&limit=50`;
+      let url = `/api/auth/google/sync?session_id=${encodeURIComponent(sid)}&limit=10`;
       if (nextPageToken) url += `&pageToken=${encodeURIComponent(nextPageToken)}`;
       
       const res = await fetch(url, { 
@@ -218,9 +220,9 @@ export const ForensicsView: React.FC = () => {
     const sid = getOrCreateSessionId();
 
     try {
-      while (keepPaging && cycles < 25) {
+      while (keepPaging && cycles < 10) {
         cycles++;
-        let url = `/api/auth/google/sync?session_id=${encodeURIComponent(sid)}&limit=50`;
+        let url = `/api/auth/google/sync?session_id=${encodeURIComponent(sid)}&limit=10`;
         if (currentToken) url += `&pageToken=${encodeURIComponent(currentToken)}`;
 
         const res = await fetch(url, { method: 'POST', headers: { 'x-session-id': sid } });
@@ -258,18 +260,12 @@ export const ForensicsView: React.FC = () => {
   const handleDisconnect = async () => {
     if (!confirm('Disconnect live Gmail account?')) return;
     try {
-      const sid = getOrCreateSessionId();
-      await fetch(`/api/auth/disconnect?session_id=${encodeURIComponent(sid)}`, { 
-        method: 'POST',
-        headers: { 'x-session-id': sid }
-      });
       setOauthStatus({ connected: false });
       setCustomEmails([]);
       setSelectedEmail(null);
       setNextPageToken(null);
       try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
-      setSyncMessage('Disconnected Gmail account');
-      setTimeout(() => setSyncMessage(null), 3000);
+      await authLogout();
     } catch (_) {}
   };
 
@@ -387,11 +383,11 @@ export const ForensicsView: React.FC = () => {
 
           <div className="flex flex-wrap items-center gap-2">
             {/* Live OAuth Connector */}
-            {(isAuthenticated && authUser) || oauthStatus?.connected ? (
+            {isGoogleConnected ? (
               <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-1.5 shadow-2xs">
                 <div className="flex items-center gap-1.5 text-xs text-emerald-800 font-bold">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="max-w-[140px] truncate">{authUser?.email || oauthStatus?.user?.email || 'Gmail Connected'}</span>
+                  <span className="max-w-[140px] truncate">{connectedEmail}</span>
                 </div>
                 <button
                   onClick={handleSyncGmail}
@@ -651,7 +647,7 @@ export const ForensicsView: React.FC = () => {
               Connect your live Gmail account via OAuth, upload an <code className="text-indigo-600 bg-indigo-50 px-1 py-0.5 rounded font-mono text-[11px]">.EML</code> file, or paste email text to inspect genuine SPF, DKIM, DMARC, IP geo-hops, and threat vectors.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-2.5">
-              {oauthStatus?.connected ? (
+              {isGoogleConnected ? (
                 <button
                   onClick={handleSyncGmail}
                   disabled={isSyncing}

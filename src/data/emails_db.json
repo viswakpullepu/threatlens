@@ -1,102 +1,124 @@
 [
   {
-    "id": "eml-mtpt1dx2",
-    "title": "Invoice #9842",
-    "shortBadge": "✅ 100% Safe",
-    "userFriendlyCategory": "Clean Authentic Electronic Mail",
-    "threatScore": 0,
-    "severity": "safe",
-    "severityLabel": "100% Safe & Verified (Green)",
-    "isThreat": false,
-    "simpleTakeaway": "Email is authentic and safe (<50 score) from verified domain \"stripe.com\". Live DNS authentication passed.",
+    "id": "eml-muimtxk9",
+    "title": "URGENT: Your PayPal Account Has Been Suspended!",
+    "shortBadge": "🚨 Critical Threat",
+    "userFriendlyCategory": "Brand Impersonation / BEC",
+    "threatScore": 99,
+    "severity": "critical",
+    "severityLabel": "Critical Threat (Red)",
+    "isThreat": true,
+    "simpleTakeaway": "Critical Threat (Red): \"URGENT: Your PayPal Account Has Been Suspended!\". Typosquatting Masquerade: Imitating PayPal Security (paypai-security-alert.xyz ≠ paypal.com). High-risk disposable TLD (.xyz).",
     "whatHappened": [
-      "Sender: legitimate-vendor@stripe.com (legitimate-vendor)",
-      "Live DNS checks: SPF=PASS, DKIM=PASS, DMARC=PASS",
-      "Extracted 0 link(s) and 0 attachment(s)."
+      "Sender: service@paypai-security-alert.xyz (PayPal Security)",
+      "Live DNS checks: SPF=FAIL, DKIM=FAIL, DMARC=FAIL",
+      "Extracted 1 link(s) and 0 attachment(s).",
+      "Forensic Aspect Ratings: Auth=35/35, Identity=42/45, URLs=26/40, Attachments=0/55, Semantics=18/30"
     ],
-    "whatToDo": "Safe to read and deliver to user inbox.",
+    "whatToDo": "Quarantine email immediately. Block sender IP and domain. Do not click links or execute attachments.",
     "sender": {
-      "displayName": "legitimate-vendor",
-      "email": "legitimate-vendor@stripe.com",
-      "envelopeFrom": "legitimate-vendor@stripe.com",
-      "replyTo": "legitimate-vendor@stripe.com",
-      "originIp": "198.137.150.231",
-      "asn": "AS16509 Amazon.com, Inc.",
-      "location": "San Francisco, United States",
-      "lat": 37.7736,
-      "lng": -122.401,
-      "reverseDns": "198.137.150.231.in-addr.arpa",
-      "isSpoofed": false,
-      "spoofType": "None Detected (Sender Identity Aligned)"
+      "displayName": "PayPal Security",
+      "email": "service@paypai-security-alert.xyz",
+      "envelopeFrom": "service@paypai-security-alert.xyz",
+      "replyTo": "phisher-trap@evil-hacker.top",
+      "originIp": "0.0.0.0",
+      "asn": "AS-UNRESOLVED",
+      "location": "Unresolved City, Unresolved Country",
+      "lat": null,
+      "lng": null,
+      "reverseDns": "None (No PTR record)",
+      "isSpoofed": true,
+      "spoofType": "Typosquatting Masquerade: Imitating PayPal Security (paypai-security-alert.xyz ≠ paypal.com)"
     },
     "recipient": {
-      "email": "alice@corp.com",
+      "email": "victim@company.com",
       "department": "Enterprise Security Posture",
       "targetHost": "mx1.enterprise.local"
     },
     "metadata": {
-      "subject": "Invoice #9842",
-      "date": "Sun, 06 Sep 2026 12:00:00 GMT",
-      "messageId": "<threatlens-1788698724073@mta>",
+      "subject": "URGENT: Your PayPal Account Has Been Suspended!",
+      "date": "Sun, 26 Sep 2026 12:00:00 GMT",
+      "messageId": "<attack-12345@evil-hacker.top>",
       "userAgent": "Standard Enterprise Mailer",
       "contentType": "text/html; charset=UTF-8"
     },
     "auth": {
       "spf": {
-        "status": "PASS",
-        "exists": true,
+        "status": "FAIL",
+        "exists": false,
         "friendlyName": "SPF (Sender Identity Check)",
         "explanation": "Queries authoritative DNS TXT records to verify if the sending IP is authorized.",
-        "message": "Domain \"stripe.com\" verified with active Mail Exchangers (MX) in DNS"
+        "message": "SPF check failed: sending IP is not authorized by paypai-security-alert.xyz"
       },
       "dkim": {
-        "status": "PASS",
-        "exists": true,
+        "status": "FAIL",
+        "exists": false,
         "friendlyName": "DKIM (Cryptographic Anti-Tamper Seal)",
         "explanation": "Validates public key cryptographic signature against sender domain DNS.",
-        "message": "Domain authenticated via DNS (No DKIM tampering detected)"
+        "message": "DKIM cryptographic verification failed for paypai-security-alert.xyz"
       },
       "dmarc": {
-        "status": "PASS",
-        "exists": true,
+        "status": "FAIL",
+        "exists": false,
         "friendlyName": "DMARC (Domain Rule Alignment)",
         "explanation": "Enforces domain policy for SPF/DKIM alignment and recipient protection.",
-        "message": "Live DNS DMARC Policy: \"v=DMARC1; p=reject; pct=100; fo=1; rua=mailto:dmarc-reports@\""
+        "message": "DMARC policy failed for paypai-security-alert.xyz"
       }
     },
-    "urls": [],
+    "urls": [
+      {
+        "url": "http://paypaI-verify-login.xyz/secure-login",
+        "domain": "paypai-verify-login.xyz",
+        "risk": "Critical",
+        "vtScore": "14/89 Malicious (NXDOMAIN Phish)",
+        "ip": "Unresolved Host",
+        "domainAge": "3 days old (Burner Domain)",
+        "isPunycode": false
+      }
+    ],
     "attachments": [],
     "hashes": {
-      "sha256": "6061dc9afbbf4d968658d2e74224299534c3f240f2b8d39892bd70f791a16ad9",
-      "md5": "aad554adf5ec158a44b0bddf5ff9029f"
+      "sha256": "b53b2a8b0a39a21779a9de1571490f8f568e84773e6ba4b2c3e3d16baa2bf536",
+      "md5": "1e3706771bd80deab5cb81a5251777fd"
     },
     "threatVerdict": {
-      "headline": "Authentic Electronic Message",
-      "confidence": 98.6,
+      "headline": "Malicious Vector Intercepted by ThreatLens AI",
+      "confidence": 99.1,
       "analysis": [
-        "Sender identity \"legitimate-vendor@stripe.com\" cross-referenced with live DNS records.",
-        "Cryptographic posture: SPF PASS | DKIM PASS | DMARC PASS.",
-        "Extracted 0 web links and 0 attachments scanned."
+        "Sender identity \"service@paypai-security-alert.xyz\" cross-referenced with live DNS records.",
+        "Cryptographic posture: SPF FAIL | DKIM FAIL | DMARC FAIL.",
+        "Extracted 1 web links and 0 attachments scanned."
       ],
-      "recommendation": "Deliver to user inbox."
+      "recommendation": "Quarantine message and isolate headers."
     },
     "timeline": [
       {
         "time": "T+0ms",
-        "event": "Inbound connection parsed from 198.137.150.231",
+        "event": "Inbound connection parsed from 0.0.0.0",
         "status": "info"
       },
       {
         "time": "T+5ms",
-        "event": "Authoritative DNS resolution (SPF/DMARC): PASS/PASS",
-        "status": "success"
+        "event": "Authoritative DNS resolution (SPF/DMARC): FAIL/FAIL",
+        "status": "danger"
       },
       {
         "time": "T+12ms",
-        "event": "Heuristic 200+ threat matrix score: 0/100",
-        "status": "success"
+        "event": "Heuristic 200+ threat matrix score: 99/100",
+        "status": "danger"
       }
     ],
-    "mitreAttack": []
+    "mitreAttack": [
+      {
+        "id": "T1566.002",
+        "name": "Spearphishing Link",
+        "tactic": "Initial Access"
+      },
+      {
+        "id": "T1036.005",
+        "name": "Masquerading",
+        "tactic": "Defense Evasion"
+      }
+    ]
   }
 ]

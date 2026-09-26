@@ -29,6 +29,19 @@ const USER_STORAGE_KEY = 'threatlens_auth_user_profile';
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(() => {
     try {
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('connected') === 'gmail' && params.get('user')) {
+          const email = params.get('user')!;
+          const initUser: UserProfile = {
+            email,
+            name: email.split('@')[0],
+            verified_email: true
+          };
+          localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(initUser));
+          return initUser;
+        }
+      }
       const cached = localStorage.getItem(USER_STORAGE_KEY);
       return cached ? JSON.parse(cached) : null;
     } catch (_) {
@@ -37,6 +50,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     try {
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('connected') === 'gmail') return true;
+      }
       return !!localStorage.getItem(USER_STORAGE_KEY);
     } catch (_) {
       return false;
@@ -52,6 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await fetch(`/api/auth/status?session_id=${encodeURIComponent(sid)}`, {
         headers: { 'x-session-id': sid }
       });
+      if (!res.ok) return;
       const data = await res.json();
       
       if (data.connected && data.user) {
@@ -63,11 +81,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (_) {}
       } else {
         if (!data.connected) {
-          setUser(null);
-          setIsAuthenticated(false);
-          try {
-            localStorage.removeItem(USER_STORAGE_KEY);
-          } catch (_) {}
+          const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+          if (params?.get('connected') !== 'gmail') {
+            const cached = localStorage.getItem(USER_STORAGE_KEY);
+            if (!cached) {
+              setUser(null);
+              setIsAuthenticated(false);
+            }
+          }
         }
       }
     } catch (err) {
@@ -106,6 +127,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem(USER_STORAGE_KEY);
       localStorage.removeItem('threatlens_device_session_id');
       document.cookie = 'tl_session=; path=/; max-age=0; SameSite=Lax';
+      document.cookie = 'tl_auth_token=; path=/; max-age=0; SameSite=Lax';
     } catch (_) {}
     
     window.location.href = window.location.pathname;

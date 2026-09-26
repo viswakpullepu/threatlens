@@ -115,7 +115,7 @@ export const LiveEmailInterceptor: React.FC<LiveEmailInterceptorProps> = ({
 
         if (statusData.connected) {
           setIsSyncing(true);
-          const syncRes = await fetch(`/api/auth/google/sync?session_id=${encodeURIComponent(sid)}`, { 
+          const syncRes = await fetch(`/api/auth/google/sync?session_id=${encodeURIComponent(sid)}&limit=10`, { 
             method: 'POST',
             headers: { 'x-session-id': sid }
           });
@@ -129,7 +129,7 @@ export const LiveEmailInterceptor: React.FC<LiveEmailInterceptorProps> = ({
               });
 
               // Initial sync after sign-in: silently establish baseline without blasting alarms for historical mailbox emails
-              if (isInitialSyncRef.current) {
+              if (isInitialSyncRef.current || knownIdsRef.current.size === 0) {
                 isInitialSyncRef.current = false;
                 allEmails.forEach((email: any) => {
                   if (email && email.id) knownIdsRef.current.add(email.id);
@@ -165,45 +165,40 @@ export const LiveEmailInterceptor: React.FC<LiveEmailInterceptorProps> = ({
                   detail: { emails: allEmails, newEmails: newIncoming, sessionId: sid }
                 }));
 
-                // Pick the most critical new email to alert the user
-                newIncoming.sort((a, b) => (b.threatScore || 0) - (a.threatScore || 0));
-                const topEmail = newIncoming[0];
-                const score = topEmail.threatScore ?? 0;
-                const emailSubject = topEmail.metadata?.subject || topEmail.title || 'Inbound Message';
+                // ONLY trigger loud sirens & floating intercept HUD for genuine critical attacks (score >= 75)
+                const highRiskIncoming = newIncoming.filter(e => (e.threatScore || 0) >= 75);
 
-                // 1. Native Desktop Notification for high-threat (>75) and all new intercepts
-                if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-                  try {
-                    const isHigh = score >= 75;
-                    new Notification(
-                      isHigh ? '🚨 CRITICAL THREAT INTERCEPTED' : '🛡️ ThreatLens Intercept',
-                      {
-                        body: isHigh
-                          ? `Threat Score: ${score}/100 [CRITICAL] - "${emailSubject}". DO NOT open this email!`
-                          : `New email intercepted: "${emailSubject}" (Score: ${score}/100)`,
-                        icon: '/favicon.ico',
-                        tag: topEmail.id
-                      }
-                    );
-                  } catch (_) {}
-                }
+                if (highRiskIncoming.length > 0) {
+                  highRiskIncoming.sort((a, b) => (b.threatScore || 0) - (a.threatScore || 0));
+                  const topEmail = highRiskIncoming[0];
+                  const score = topEmail.threatScore ?? 0;
+                  const emailSubject = topEmail.metadata?.subject || topEmail.title || 'Inbound Message';
 
-                // 2. Play synthesized audio alert
-                if (soundEnabled) {
-                  if (score > 80) {
-                    playThreatAlarmSound(true);
-                  } else if (score >= 50) {
-                    playThreatAlarmSound(false);
-                  } else {
-                    playSafeChimeSound();
+                  // 1. Native Desktop Notification for high-threat (>75)
+                  if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+                    try {
+                      new Notification(
+                        '🚨 CRITICAL THREAT INTERCEPTED',
+                        {
+                          body: `Threat Score: ${score}/100 [CRITICAL] - "${emailSubject}". High-risk attack vector flagged.`,
+                          icon: '/favicon.ico',
+                          tag: topEmail.id
+                        }
+                      );
+                    } catch (_) {}
                   }
-                }
 
-                // 3. Show floating real-time interception HUD
-                setActiveNotification({
-                  email: topEmail,
-                  timestamp: new Date().toLocaleTimeString()
-                });
+                  // 2. Play synthesized audio alert for confirmed critical threat
+                  if (soundEnabled) {
+                    playThreatAlarmSound(true);
+                  }
+
+                  // 3. Show floating real-time interception HUD
+                  setActiveNotification({
+                    email: topEmail,
+                    timestamp: new Date().toLocaleTimeString()
+                  });
+                }
               }
             }
           }
@@ -215,9 +210,9 @@ export const LiveEmailInterceptor: React.FC<LiveEmailInterceptorProps> = ({
       }
     };
 
-    // Run first check immediately, then poll every 5 seconds for fast response
+    // Run first check immediately, then poll every 20 seconds
     runSyncCycle();
-    intervalId = setInterval(runSyncCycle, 5000);
+    intervalId = setInterval(runSyncCycle, 20000);
 
     return () => {
       if (intervalId) clearInterval(intervalId);
